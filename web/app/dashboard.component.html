@@ -1,0 +1,28 @@
+<div class="flex horizontal layout" style="margin-left: 10px; position:relative">
+    <paper-spinner [(active)]="loadingApps"></paper-spinner>
+
+    <div *ngFor="#app of apps">
+
+        <paper-card heading="{{app.name}}" animatedShadow [elevation]="appsElevation"
+                    on-mouseover="onHoverApplications()"
+                    on-mouseout="onLeaveApplications()"
+                    style="margin: 10px">
+
+            <div class="card-content">
+                <h4>Base Url: /{{app.baseUrl}}</h4>
+                <h4>Services: </h4>
+                <div *ngFor="#service of app.services | mapToIterable">
+                    key {{service.key}} and value {{service.value}}
+                </div>
+                <h4>State: {{app.state}}</h4>
+            </div>
+            <div class="card-actions">
+                <paper-button>Configure</paper-button>
+                <paper-button>Monitor</paper-button>
+                <paper-button>Stats</paper-button>
+            </div>
+        </paper-card>
+
+    </div>
+
+</div>

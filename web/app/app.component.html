@@ -1,0 +1,45 @@
+<paper-drawer-panel id="anakin-drawer">
+
+    <paper-header-panel drawer style="background-color: #222424">
+
+        <paper-toolbar class="medium">
+            <iron-image src="images/anakin.png" style="width: 70px; height: 70px;" sizing="contain"></iron-image>
+            <h1>ANAKIN</h1>
+        </paper-toolbar>
+
+        <paper-material class="flex">
+            <paper-menu selected="0">
+                <paper-item (click)="onDashboardSelected()">
+                    <iron-icon icon="dashboard"></iron-icon>
+                    Dashboard
+                </paper-item>
+                <paper-item (click)="onConfigurationSelected()">
+                    <iron-icon icon="apps"></iron-icon>
+                    Configuration
+                </paper-item>
+                <paper-item (click)="onStatisticsSelected()">
+                    <iron-icon icon="assessment"></iron-icon>
+                    Statistics
+                </paper-item>
+
+                <paper-item (click)="onMonitoringSelected()">
+                    <iron-icon icon="info"></iron-icon>
+                    Monitoring
+                </paper-item>
+
+            </paper-menu>
+        </paper-material>
+    </paper-header-panel>
+
+    <paper-header-panel main style="background-color: #343434">
+
+        <paper-toolbar class="medium">
+            <paper-icon-button icon="menu" paper-drawer-toggle></paper-icon-button>
+            <div class="title">Force Balancer {{version}}</div>
+            <paper-icon-button icon="help"></paper-icon-button>
+        </paper-toolbar>
+
+            <router-outlet></router-outlet>
+
+    </paper-header-panel>
+</paper-drawer-panel>

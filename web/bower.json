@@ -1,0 +1,25 @@
+{
+  "name": "anakin-web",
+  "description": "anakin web ui",
+  "main": "",
+  "authors": [
+    "erdem aslan <erdem.aslan@telenity.com>"
+  ],
+  "license": "ISC",
+  "keywords": [
+    "anakin"
+  ],
+  "homepage": "",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#^1.4.0",
+    "paper-elements": "PolymerElements/paper-elements#^1.0.7"
+  }
+}
