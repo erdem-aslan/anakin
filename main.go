@@ -1,8 +1,12 @@
 package main
 
 import (
+	"github.com/hashicorp/logutils"
 	"hash/fnv"
-	"log"
+	"io"
+	logger "log"
+	"os"
+	"os/signal"
 )
 
 type State string
@@ -29,16 +33,28 @@ const (
 )
 
 var (
-	config *Configuration
-	store  Store
+	config        *Configuration
+	anakinCluster *AnakinCluster
+	store         Store
+	registry      *Registry
+	log           *logger.Logger
+	filter        *logutils.LevelFilter
 )
 
 func init() {
-	log.SetPrefix("<anakin " + Version + "> ")
-	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	filter = &logutils.LevelFilter{
+		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR"},
+		MinLevel: logutils.LogLevel("WARN"),
+		Writer:   os.Stderr,
+	}
+
+	log = logger.New(io.MultiWriter(os.Stdout), "<anakin>", logger.Ldate|logger.Ltime|logger.Lshortfile)
+
 }
 
 func main() {
+
+	attachShutdownHook()
 
 	// Config init does not return error, just exits the runtime.
 	initConfig()
@@ -49,17 +65,24 @@ func main() {
 		log.Fatal("Store access has failed with error: ", err)
 	}
 
-	r, err := initRegistry()
+	// init clustering
+	err = initCluster()
+
+	if err != nil {
+		log.Fatal("Clustering has failed: ", err)
+	}
+
+	registry, err = initRegistry()
 
 	if err != nil {
 		log.Fatal("Registry initialization has failed with error: ", err)
 	}
 
-	store.AddListener(r)
+	store.AddListener(registry)
 
 	go serveAdminBackend()
 
-	err = serveProxy(r)
+	err = serveProxy(registry)
 
 	if err != nil {
 		log.Fatal("Failed serving reverse proxy, error: ", err)
@@ -68,8 +91,14 @@ func main() {
 
 func initStore() error {
 
-	store = NewFsStore()
-	return store.Initialize(config.DbPath + SEPARATOR + config.DbFileName)
+	if config.MongoServers == nil {
+		store = NewFsStore()
+		return store.Initialize(config.DbPath + SEPARATOR + config.DbFileName)
+	}
+
+	store = NewMongoStore()
+	return store.Initialize("")
+
 }
 
 func initRegistry() (r *Registry, err error) {
@@ -79,8 +108,36 @@ func initRegistry() (r *Registry, err error) {
 	return
 }
 
+func attachShutdownHook() {
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, os.Kill)
+
+	go func() {
+		<-c
+		if anakinCluster != nil {
+			anakinCluster.Shutdown(true)
+		}
+
+		os.Exit(0)
+	}()
+}
+
 func hash(s string) int {
 	h := fnv.New32a()
 	h.Write([]byte(s))
 	return int(h.Sum32())
+}
+
+// Helper wrapper type which implements sort.Interface
+type SortByDESCLength []string
+
+func (a SortByDESCLength) Len() int {
+	return len(a)
+}
+func (a SortByDESCLength) Less(i, j int) bool {
+	return len(a[i]) > len(a[j])
+}
+func (a SortByDESCLength) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
 }

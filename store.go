@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/boltdb/bolt"
-	"log"
+	"gopkg.in/mgo.v2"
 	"sync"
 	"time"
 )
@@ -22,6 +22,13 @@ const (
 	Initialized
 	Shutdown
 )
+
+const DB_NAME string = "Anakin"
+const APPS_COL string = "apps"
+const SERVICES_COL string = "services"
+const ENDPOINTS_COL string = "endpoints"
+const STATS_COL string = "stats"
+const USERS_COL string = "users"
 
 type Store interface {
 	State() StoreState
@@ -67,9 +74,430 @@ type StoreListener interface {
 	EndpointRemoved(id string)
 }
 
+type MongoStore struct {
+	state   StoreState
+	l       map[StoreListener]bool
+	ll      sync.RWMutex
+	session *mgo.Session
+	sync.RWMutex
+}
+
+func (ms *MongoStore) State() StoreState {
+	return ms.state
+}
+
+func (ms *MongoStore) Initialize(ignored string) (err error) {
+
+	ms.Lock()
+	defer ms.Unlock()
+	log.Println("Initializing mongo store...")
+
+	if ms.state == Initialized {
+		return InvalidStoreStateError
+	}
+
+	s, err := mgo.DialWithInfo(&mgo.DialInfo{
+		Addrs:    config.MongoServers,
+		Direct:   false,
+		Timeout:  5 * time.Second,
+		FailFast: true,
+		Database: DB_NAME,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	ms.session = s
+
+	s.SetMode(mgo.Monotonic, true)
+
+	ms.state = Initialized
+
+	log.Println("Initializing mongo store, finished")
+
+	return nil
+
+}
+
+func (ms *MongoStore) CreateApplication(a *Application) error {
+
+	err := ms.create(a, APPS_COL)
+
+	if err == nil {
+		ms.ll.RLock()
+		for lis, _ := range ms.l {
+			go lis.ApplicationAdded(a)
+		}
+		ms.ll.RUnlock()
+
+		erro := anakinCluster.BroadcastAnakinEvent(&AnakinEvent{
+			EventType: AppCreated,
+			Payload:   a.UniqueId,
+		})
+
+		if erro != nil {
+			log.Println("Failed notifiying the cluster, error: ", err)
+		}
+	}
+
+	return err
+}
+
+func (ms *MongoStore) GetApplication(id string) (*Application, error) {
+	app := &Application{UniqueId: id}
+	app.Init()
+	err := ms.get(app, APPS_COL)
+
+	return app, err
+
+}
+
+func (ms *MongoStore) UpdateApplication(a *Application) error {
+
+	err := ms.update(a, APPS_COL)
+
+	if err == nil {
+		ms.ll.RLock()
+		for lis, _ := range ms.l {
+			go lis.ApplicationUpdated(a)
+		}
+		ms.ll.RUnlock()
+
+		erro := anakinCluster.BroadcastAnakinEvent(&AnakinEvent{
+			EventType: AppUpdated,
+			Payload:   a.UniqueId,
+		})
+
+		if erro != nil {
+			log.Println("Failed notifiying the cluster, error: ", err)
+		}
+
+	}
+
+	return err
+}
+
+func (ms *MongoStore) DeleteApplication(id string) error {
+
+	a, err := ms.GetApplication(id)
+
+	if a == nil {
+		return MissingEntryError
+	}
+
+	if err != nil {
+		return err
+	}
+
+	for serviceId, _ := range a.Services {
+		ms.DeleteService(serviceId)
+	}
+
+	err = ms.delete(id, APPS_COL)
+
+	if err == nil {
+		ms.ll.RLock()
+		for lis, _ := range ms.l {
+			go lis.ApplicationRemoved(id)
+		}
+		ms.ll.RUnlock()
+
+		erro := anakinCluster.BroadcastAnakinEvent(&AnakinEvent{
+			EventType: AppDeleted,
+			Payload:   a.UniqueId,
+		})
+
+		if erro != nil {
+			log.Println("Failed notifiying the cluster, error: ", err)
+		}
+
+	}
+
+	return err
+}
+
+func (ms *MongoStore) GetApplications() ([]*Application, error) {
+
+	apps := make([]*Application, 10)
+
+	scopy := ms.session.Copy()
+	defer scopy.Close()
+	err := scopy.DB(DB_NAME).C(APPS_COL).Find(nil).All(&apps)
+
+	return apps, err
+}
+
+func (ms *MongoStore) CreateService(s *Service) (err error) {
+
+	err = ms.create(s, SERVICES_COL)
+
+	if err == nil {
+		ms.ll.RLock()
+		for lis, _ := range ms.l {
+			go lis.ServiceAdded(s)
+		}
+		ms.ll.RUnlock()
+
+		erro := anakinCluster.BroadcastAnakinEvent(&AnakinEvent{
+			EventType: SvcCreated,
+			Payload:   s.UniqueId,
+		})
+
+		if erro != nil {
+			log.Println("Failed notifiying the cluster, error: ", err)
+		}
+
+	}
+
+	return err
+
+}
+
+func (ms *MongoStore) DeleteService(id string) error {
+
+	s, err := ms.GetService(id)
+
+	if s == nil {
+		return MissingEntryError
+	}
+
+	for endpointId, _ := range s.Endpoints {
+		ms.DeleteEndpoint(endpointId)
+	}
+
+	err = ms.delete(id, SERVICES_COL)
+
+	if err == nil {
+		ms.ll.RLock()
+		for lis, _ := range ms.l {
+			go lis.ServiceRemoved(id)
+		}
+		ms.ll.RUnlock()
+
+		erro := anakinCluster.BroadcastAnakinEvent(&AnakinEvent{
+			EventType: SvcDeleted,
+			Payload:   s.UniqueId,
+		})
+
+		if erro != nil {
+			log.Println("Failed notifiying the cluster, error: ", err)
+		}
+	}
+
+	return err
+
+}
+
+func (ms *MongoStore) GetService(id string) (*Service, error) {
+	service := &Service{UniqueId: id}
+	err := ms.get(service, SERVICES_COL)
+
+	return service, err
+}
+
+func (ms *MongoStore) GetServices() ([]*Service, error) {
+	services := make([]*Service, 10)
+
+	scopy := ms.session.Copy()
+	defer scopy.Close()
+	err := scopy.DB(DB_NAME).C(SERVICES_COL).Find(nil).All(&services)
+
+	return services, err
+
+}
+
+func (ms *MongoStore) UpdateService(s *Service) error {
+	err := ms.update(s, SERVICES_COL)
+
+	if err == nil {
+		ms.ll.RLock()
+		for lis, _ := range ms.l {
+			go lis.ServiceUpdated(s)
+		}
+		ms.ll.RUnlock()
+
+		erro := anakinCluster.BroadcastAnakinEvent(&AnakinEvent{
+			EventType: SvcUpdated,
+			Payload:   s.UniqueId,
+		})
+
+		if erro != nil {
+			log.Println("Failed notifiying the cluster, error: ", err)
+		}
+
+	}
+
+	return err
+
+}
+
+func (ms *MongoStore) CreateEndpoint(e *Endpoint) (err error) {
+
+	err = ms.create(e, ENDPOINTS_COL)
+
+	if err == nil {
+		ms.ll.RLock()
+		for lis, _ := range ms.l {
+			go lis.EndpointAdded(e)
+		}
+		ms.ll.RUnlock()
+
+		erro := anakinCluster.BroadcastAnakinEvent(&AnakinEvent{
+			EventType: EndpCreated,
+			Payload:   e.UniqueId,
+		})
+
+		if erro != nil {
+			log.Println("Failed notifiying the cluster, error: ", err)
+		}
+
+	}
+
+	return err
+
+}
+func (ms *MongoStore) DeleteEndpoint(id string) error {
+
+	err := ms.delete(id, ENDPOINTS_COL)
+
+	if err == nil {
+		ms.ll.RLock()
+		for lis, _ := range ms.l {
+			go lis.EndpointRemoved(id)
+		}
+		ms.ll.RUnlock()
+
+		erro := anakinCluster.BroadcastAnakinEvent(&AnakinEvent{
+			EventType: EndpDeleted,
+			Payload:   id,
+		})
+
+		if erro != nil {
+			log.Println("Failed notifiying the cluster, error: ", err)
+		}
+
+	}
+
+	return err
+
+}
+func (ms *MongoStore) GetEndpoint(id string) (*Endpoint, error) {
+	endpoint := &Endpoint{UniqueId: id}
+	err := ms.get(endpoint, ENDPOINTS_COL)
+
+	return endpoint, err
+
+}
+func (ms *MongoStore) GetEndpoints() ([]*Endpoint, error) {
+
+	endpoints := make([]*Endpoint, 10)
+
+	scopy := ms.session.Copy()
+	defer scopy.Close()
+	err := scopy.DB(DB_NAME).C(ENDPOINTS_COL).Find(nil).All(&endpoints)
+
+	return endpoints, err
+
+}
+func (ms *MongoStore) UpdateEndpoint(e *Endpoint) error {
+
+	err := ms.update(e, ENDPOINTS_COL)
+
+	if err == nil {
+		ms.ll.RLock()
+		for lis, _ := range ms.l {
+			go lis.EndpointUpdated(e)
+		}
+		ms.ll.RUnlock()
+
+		erro := anakinCluster.BroadcastAnakinEvent(&AnakinEvent{
+			EventType: EndpUpdated,
+			Payload:   e.UniqueId,
+		})
+
+		if erro != nil {
+			log.Println("Failed notifiying the cluster, error: ", err)
+		}
+
+	}
+
+	return err
+}
+
+func (ms *MongoStore) AddListener(listener StoreListener) error {
+
+	if ms.l[listener] {
+		return errors.New("Listener already present")
+	}
+
+	ms.l[listener] = true
+	return nil
+}
+
+func (ms *MongoStore) RemoveListener(listener StoreListener) {
+	delete(ms.l, listener)
+}
+
+func (ms *MongoStore) Shutdown() (bool, error) {
+
+	if ms.state != Initialized {
+		return false, errors.New("Store is not initialized")
+	}
+
+	ms.session.Fsync(false)
+	ms.session.Close()
+
+	ms.state = Shutdown
+
+	return true, nil
+}
+
+func (ms *MongoStore) create(entity Entity, collection string) (err error) {
+	scopy := ms.session.Copy()
+	defer scopy.Close()
+	err = scopy.DB(DB_NAME).C(collection).Insert(entity)
+	return
+}
+
+func (ms *MongoStore) delete(entityId string, collection string) (err error) {
+	scopy := ms.session.Copy()
+	defer scopy.Close()
+	err = scopy.DB(DB_NAME).C(collection).RemoveId(entityId)
+	return
+}
+
+func (ms *MongoStore) get(entity Entity, collection string) (err error) {
+	scopy := ms.session.Copy()
+	defer scopy.Close()
+	err = scopy.DB(DB_NAME).C(collection).FindId(entity.Id()).One(entity)
+	return
+}
+
+func (ms *MongoStore) update(entity Entity, collection string) (err error) {
+	scopy := ms.session.Copy()
+	defer scopy.Close()
+	info, err := scopy.DB(DB_NAME).C(collection).Upsert(entity.Id(), entity)
+
+	if info.Updated != 1 {
+		log.Println("Store update has failed for entity:", entity)
+	}
+
+	return
+
+}
+
 func NewFsStore() Store {
 
 	return &FsStore{
+		state: Created,
+		l:     make(map[StoreListener]bool),
+	}
+}
+
+func NewMongoStore() Store {
+
+	return &MongoStore{
 		state: Created,
 		l:     make(map[StoreListener]bool),
 	}
@@ -91,7 +519,7 @@ func (fs *FsStore) Initialize(dbFilePath string) (err error) {
 
 	fs.Lock()
 	defer fs.Unlock()
-	log.Println("Initializing store...")
+	log.Println("Initializing embedded store...")
 
 	if fs.state == Initialized {
 		return InvalidStoreStateError
@@ -107,31 +535,31 @@ func (fs *FsStore) Initialize(dbFilePath string) (err error) {
 
 	err = fs.db.Update(func(tx *bolt.Tx) error {
 
-		_, err = tx.CreateBucketIfNotExists([]byte("apps"))
+		_, err = tx.CreateBucketIfNotExists([]byte(APPS_COL))
 
 		if err != nil {
 			return err
 		}
 
-		_, err = tx.CreateBucketIfNotExists([]byte("services"))
+		_, err = tx.CreateBucketIfNotExists([]byte(SERVICES_COL))
 
 		if err != nil {
 			return err
 		}
 
-		_, err = tx.CreateBucketIfNotExists([]byte("endpoints"))
+		_, err = tx.CreateBucketIfNotExists([]byte(ENDPOINTS_COL))
 
 		if err != nil {
 			return err
 		}
 
-		_, err = tx.CreateBucketIfNotExists([]byte("stats"))
+		_, err = tx.CreateBucketIfNotExists([]byte(STATS_COL))
 
 		if err != nil {
 			return err
 		}
 
-		_, err = tx.CreateBucketIfNotExists([]byte("users"))
+		_, err = tx.CreateBucketIfNotExists([]byte(USERS_COL))
 
 		if err != nil {
 			return err
@@ -147,7 +575,7 @@ func (fs *FsStore) Initialize(dbFilePath string) (err error) {
 
 	fs.state = Initialized
 
-	log.Println("Initializing store, finished")
+	log.Println("Initializing embedded store, finished")
 
 	return nil
 
@@ -157,7 +585,7 @@ func (fs *FsStore) Initialize(dbFilePath string) (err error) {
 
 func (fs *FsStore) CreateApplication(a *Application) error {
 
-	err := fs.create(a, "apps")
+	err := fs.create(a, APPS_COL)
 
 	if err == nil {
 		fs.ll.RLock()
@@ -187,7 +615,7 @@ func (fs *FsStore) DeleteApplication(id string) error {
 		fs.DeleteService(serviceId)
 	}
 
-	err = fs.delete(id, "apps")
+	err = fs.delete(id, APPS_COL)
 
 	if err == nil {
 		fs.ll.RLock()
@@ -202,7 +630,7 @@ func (fs *FsStore) DeleteApplication(id string) error {
 
 func (fs *FsStore) UpdateApplication(a *Application) error {
 
-	err := fs.update(a, "apps")
+	err := fs.update(a, APPS_COL)
 
 	if err == nil {
 		fs.ll.RLock()
@@ -220,7 +648,7 @@ func (fs *FsStore) GetApplication(id string) (*Application, error) {
 
 	app := &Application{UniqueId: id}
 	app.Init()
-	err := fs.get(app, "apps")
+	err := fs.get(app, APPS_COL)
 
 	return app, err
 
@@ -234,7 +662,7 @@ func (fs *FsStore) GetApplications() ([]*Application, error) {
 
 func (fs *FsStore) CreateService(s *Service) error {
 
-	err := fs.create(s, "services")
+	err := fs.create(s, SERVICES_COL)
 
 	if err == nil {
 		fs.ll.RLock()
@@ -259,7 +687,7 @@ func (fs *FsStore) DeleteService(id string) error {
 		fs.DeleteEndpoint(endpointId)
 	}
 
-	err = fs.delete(id, "services")
+	err = fs.delete(id, SERVICES_COL)
 
 	if err == nil {
 		fs.ll.RLock()
@@ -273,7 +701,7 @@ func (fs *FsStore) DeleteService(id string) error {
 }
 
 func (fs *FsStore) UpdateService(s *Service) error {
-	err := fs.update(s, "services")
+	err := fs.update(s, SERVICES_COL)
 
 	if err == nil {
 		fs.ll.RLock()
@@ -289,7 +717,7 @@ func (fs *FsStore) UpdateService(s *Service) error {
 func (fs *FsStore) GetService(id string) (*Service, error) {
 
 	service := &Service{UniqueId: id}
-	err := fs.get(service, "services")
+	err := fs.get(service, SERVICES_COL)
 
 	return service, err
 
@@ -303,7 +731,7 @@ func (fs *FsStore) GetServices() ([]*Service, error) {
 
 func (fs *FsStore) CreateEndpoint(e *Endpoint) error {
 
-	err := fs.create(e, "endpoints")
+	err := fs.create(e, ENDPOINTS_COL)
 
 	if err == nil {
 		fs.ll.RLock()
@@ -318,7 +746,7 @@ func (fs *FsStore) CreateEndpoint(e *Endpoint) error {
 
 func (fs *FsStore) DeleteEndpoint(id string) error {
 
-	err := fs.delete(id, "endpoints")
+	err := fs.delete(id, ENDPOINTS_COL)
 
 	if err == nil {
 		fs.ll.RLock()
@@ -332,7 +760,7 @@ func (fs *FsStore) DeleteEndpoint(id string) error {
 }
 
 func (fs *FsStore) UpdateEndpoint(e *Endpoint) error {
-	err := fs.update(e, "endpoints")
+	err := fs.update(e, ENDPOINTS_COL)
 
 	if err == nil {
 		fs.ll.RLock()
@@ -348,7 +776,7 @@ func (fs *FsStore) UpdateEndpoint(e *Endpoint) error {
 func (fs *FsStore) GetEndpoint(id string) (*Endpoint, error) {
 
 	endpoint := &Endpoint{UniqueId: id}
-	err := fs.get(endpoint, "endpoints")
+	err := fs.get(endpoint, ENDPOINTS_COL)
 
 	return endpoint, err
 
@@ -429,7 +857,7 @@ func (fs *FsStore) getAllApps() (apps []*Application, err error) {
 
 	err = fs.db.View(func(tx *bolt.Tx) error {
 
-		b := tx.Bucket([]byte("apps"))
+		b := tx.Bucket([]byte(APPS_COL))
 
 		if b.Stats().KeyN == 0 {
 			return nil
@@ -462,7 +890,7 @@ func (fs *FsStore) getAllServices() (services []*Service, err error) {
 
 	err = fs.db.View(func(tx *bolt.Tx) error {
 
-		b := tx.Bucket([]byte("services"))
+		b := tx.Bucket([]byte(SERVICES_COL))
 
 		if b.Stats().KeyN == 0 {
 			return nil
@@ -495,7 +923,7 @@ func (fs *FsStore) getAllEndpoints() (endpoints []*Endpoint, err error) {
 
 	err = fs.db.View(func(tx *bolt.Tx) error {
 
-		b := tx.Bucket([]byte("endpoints"))
+		b := tx.Bucket([]byte(ENDPOINTS_COL))
 
 		if b.Stats().KeyN == 0 {
 			return nil
@@ -577,6 +1005,11 @@ func (fs *FsStore) Shutdown() (bool, error) {
 }
 
 func (fs *FsStore) AddListener(listener StoreListener) error {
+
+	if fs.l[listener] {
+		return errors.New("Listener already present")
+	}
+
 	fs.l[listener] = true
 	return nil
 }

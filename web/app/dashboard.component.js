@@ -1,4 +1,4 @@
-System.register(['angular2/core', "./anakin.service", "./mapToIterable"], function(exports_1, context_1) {
+System.register(['angular2/core', "./anakin.service", "./mapToIterable", "./slashIfMissing"], function(exports_1, context_1) {
     "use strict";
     var __moduleName = context_1 && context_1.id;
     var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
@@ -10,7 +10,7 @@ System.register(['angular2/core', "./anakin.service", "./mapToIterable"], functi
     var __metadata = (this && this.__metadata) || function (k, v) {
         if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
     };
-    var core_1, anakin_service_1, mapToIterable_1;
+    var core_1, anakin_service_1, mapToIterable_1, slashIfMissing_1;
     var DashboardComponent;
     return {
         setters:[
@@ -22,6 +22,9 @@ System.register(['angular2/core', "./anakin.service", "./mapToIterable"], functi
             },
             function (mapToIterable_1_1) {
                 mapToIterable_1 = mapToIterable_1_1;
+            },
+            function (slashIfMissing_1_1) {
+                slashIfMissing_1 = slashIfMissing_1_1;
             }],
         execute: function() {
             DashboardComponent = (function () {
@@ -32,6 +35,7 @@ System.register(['angular2/core', "./anakin.service", "./mapToIterable"], functi
                     this.loadingServices = true;
                     this.loadingEndpoints = true;
                     this.appsElevation = 1;
+                    this.animatedShadow = true;
                 }
                 DashboardComponent.prototype.ngOnInit = function () {
                     console.log("DashboardComponent  init");
@@ -54,12 +58,15 @@ System.register(['angular2/core', "./anakin.service", "./mapToIterable"], functi
                     if (this.errorString) {
                         console.error(this.errorString);
                     }
+                    else {
+                        console.log(JSON.stringify(this.apps));
+                    }
                 };
                 DashboardComponent = __decorate([
                     core_1.Component({
                         selector: 'dashboard',
                         templateUrl: 'app/dashboard.component.html',
-                        pipes: [mapToIterable_1.MapToIterable]
+                        pipes: [mapToIterable_1.MapToIterable, slashIfMissing_1.SlashIfMissing]
                     }), 
                     __metadata('design:paramtypes', [core_1.ElementRef, anakin_service_1.AnakinService])
                 ], DashboardComponent);

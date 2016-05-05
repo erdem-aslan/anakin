@@ -6,7 +6,6 @@ import (
 	"flag"
 	"github.com/BurntSushi/toml"
 	"github.com/satori/go.uuid"
-	"log"
 	"os"
 )
 
@@ -14,16 +13,15 @@ const SEPARATOR string = string(os.PathSeparator)
 
 func initConfig() {
 
-	log.Println("Initializing configuration...")
-
 	var cfgPath string
 
 	flag.StringVar(&cfgPath,
 		"cfg",
 		DefaultCfgPath,
 		"Path of the configuration file, ex: /path/to/anakin/cfg/anakin.toml")
-
 	flag.Parse()
+
+	log.Println("Initializing configuration...")
 
 	_, err := os.Stat(cfgPath)
 
@@ -139,6 +137,12 @@ type Configuration struct {
 	ProxyIp       string
 	ProxyPort     int
 	ProxyRootPath string
+
+	ClusterIp      string
+	ClusterPort    int
+	ClusterMembers []string
+
+	MongoServers []string
 
 	DbPath     string
 	DbFileName string

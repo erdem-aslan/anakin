@@ -3,21 +3,20 @@ package main
 import (
 	"encoding/json"
 	"github.com/satori/go.uuid"
-	"log"
 	"strconv"
 	"sync"
 	"time"
 )
 
 type Endpoint struct {
-	UniqueId     string      `json:"id"`
+	UniqueId     string      `json:"id" bson:"_id,omitempty"`
 	Host         string      `json:"host"`
 	Port         int         `json:"port"`
 	Scheme       string      `json:"scheme"`
-	CurrentState State       `json:"state"`
+	CurrentState State       `json:"state" bson:"state"`
 	failedCount  int         `json:"-"`
 	failedTimer  *time.Timer `json:"-"`
-	sync.RWMutex `json:"-"`
+	sync.RWMutex `json:"-" bson:"-"`
 }
 
 func (e *Endpoint) String() string {

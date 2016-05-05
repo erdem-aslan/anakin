@@ -3,7 +3,6 @@ package main
 import (
 	"container/ring"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -46,10 +45,12 @@ func (r *Registry) Init(store Store) error {
 		return err
 	}
 
+	r.al.Lock()
 	for _, app := range appsSlice {
 		r.apps[app.UniqueId] = app
 		r.urlAppIndex[app.BaseUrl] = app
 	}
+	r.al.Unlock()
 
 	endSlice, err := store.GetEndpoints()
 
@@ -57,10 +58,12 @@ func (r *Registry) Init(store Store) error {
 		return err
 	}
 
+	r.el.Lock()
 	for _, end := range endSlice {
 		log.Println("Caching endpoint: ", end)
 		r.endpoints[end.UniqueId] = end
 	}
+	r.el.Unlock()
 
 	serviceSlice, err := store.GetServices()
 
@@ -68,6 +71,7 @@ func (r *Registry) Init(store Store) error {
 		return err
 	}
 
+	r.sl.Lock()
 	for _, service := range serviceSlice {
 
 		r.services[service.UniqueId] = service
@@ -93,6 +97,7 @@ func (r *Registry) Init(store Store) error {
 		service.serviceEPList = sl
 
 	}
+	r.sl.Unlock()
 
 	log.Println("Initializing registry, finished")
 
@@ -169,22 +174,39 @@ func (r *Registry) ServiceForRequest(request *http.Request) *Service {
 		return nil
 	}
 
-	services := matchedApp.ServicesSet()
+	services := matchedApp.ServicesSorted()
+
+	if len(services) == 0 {
+		log.Println("No services has defined for base url: ", baseUrl)
+	}
 
 	var matchedService *Service = nil
 
-	for serviceId, _ := range services {
+	for _, serviceId := range services {
 
 		service := r.GetService(serviceId)
 
-		if service.ServiceUrl == target.Path && service.State() == Active {
-			matchedService = service
+		if service == nil {
+			log.Println("Registry cache mismatch, reconstructing...")
+			r.Init(r.s)
+			return nil
+		}
+
+		if service.Nested {
+			if strings.HasPrefix(target.Path, service.ServiceUrl) {
+				matchedService = service
+				break
+			}
+		} else {
+			if service.ServiceUrl == target.Path {
+				matchedService = service
+				break
+			}
 		}
 	}
 
 	if matchedService == nil {
 		log.Println("No service for target path: ", target.Path)
-		return nil
 	}
 
 	return matchedService
@@ -352,4 +374,87 @@ func (r *Registry) EndpointRemoved(id string) {
 	r.al.Lock()
 	defer r.al.Unlock()
 	delete(r.apps, id)
+}
+
+func (r *Registry) RemoteRegistryEvent(message AnakinEvent) {
+
+	payload := message.Payload
+
+	switch message.EventType {
+	case AppCreated:
+		app, err := store.GetApplication(payload)
+
+		if err != nil {
+			log.Println("Failed processing remote appCreated event, error: ", err)
+		}
+
+		if app != nil || err != nil {
+			r.ApplicationAdded(app)
+		}
+	case AppDeleted:
+		r.ApplicationRemoved(payload)
+	case AppUpdated:
+		app, err := store.GetApplication(payload)
+
+		if err != nil {
+			log.Println("Failed processing remote appUpdated event, error: ", err)
+		}
+
+		if app != nil || err != nil {
+			r.ApplicationUpdated(app)
+		}
+
+	case SvcCreated:
+		svc, err := store.GetService(payload)
+
+		if err != nil {
+			log.Println("Failed processing remote svcCreated event, error: ", err)
+		}
+
+		if svc != nil || err != nil {
+			r.ServiceAdded(svc)
+		}
+
+	case SvcDeleted:
+		r.ServiceRemoved(payload)
+
+	case SvcUpdated:
+		svc, err := store.GetService(payload)
+
+		if err != nil {
+			log.Println("Failed processing remote svcUpdated event, error: ", err)
+		}
+
+		if svc != nil || err != nil {
+			r.ServiceUpdated(svc)
+		}
+
+	case EndpCreated:
+		endp, err := store.GetEndpoint(payload)
+
+		if err != nil {
+			log.Println("Failed processing remote endpCreated event, error: ", err)
+		}
+
+		if endp != nil || err != nil {
+			r.EndpointAdded(endp)
+		}
+
+	case EndpDeleted:
+		r.EndpointRemoved(payload)
+
+	case EndpUpdated:
+		endp, err := store.GetEndpoint(payload)
+
+		if err != nil {
+			log.Println("Failed processing remote appUpdated event, error: ", err)
+		}
+
+		if endp != nil || err != nil {
+			r.EndpointUpdated(endp)
+		}
+
+	default:
+		log.Println("Unhandled remote event, type: ", message.EventType, ", payload: ", payload)
+	}
 }

@@ -1,4 +1,4 @@
-System.register(['angular2/core', "./anakin.service"], function(exports_1, context_1) {
+System.register(['angular2/core', "./anakin.service", "./mapToIterable", "./slashIfMissing"], function(exports_1, context_1) {
     "use strict";
     var __moduleName = context_1 && context_1.id;
     var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
@@ -10,7 +10,7 @@ System.register(['angular2/core', "./anakin.service"], function(exports_1, conte
     var __metadata = (this && this.__metadata) || function (k, v) {
         if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
     };
-    var core_1, anakin_service_1;
+    var core_1, anakin_service_1, mapToIterable_1, slashIfMissing_1;
     var ConfigurationComponent;
     return {
         setters:[
@@ -19,6 +19,12 @@ System.register(['angular2/core', "./anakin.service"], function(exports_1, conte
             },
             function (anakin_service_1_1) {
                 anakin_service_1 = anakin_service_1_1;
+            },
+            function (mapToIterable_1_1) {
+                mapToIterable_1 = mapToIterable_1_1;
+            },
+            function (slashIfMissing_1_1) {
+                slashIfMissing_1 = slashIfMissing_1_1;
             }],
         execute: function() {
             ConfigurationComponent = (function () {
@@ -31,7 +37,8 @@ System.register(['angular2/core', "./anakin.service"], function(exports_1, conte
                 ConfigurationComponent = __decorate([
                     core_1.Component({
                         selector: 'configuration',
-                        templateUrl: 'app/configuration.component.html'
+                        templateUrl: 'app/configuration.component.html',
+                        pipes: [mapToIterable_1.MapToIterable, slashIfMissing_1.SlashIfMissing],
                     }), 
                     __metadata('design:paramtypes', [anakin_service_1.AnakinService])
                 ], ConfigurationComponent);

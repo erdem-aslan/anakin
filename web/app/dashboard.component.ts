@@ -5,10 +5,13 @@ import {Component, OnInit, ElementRef} from 'angular2/core';
 import {AnakinService} from "./anakin.service"
 import {Application} from "./application";
 import {MapToIterable} from "./mapToIterable"
+import {SlashIfMissing} from "./slashIfMissing";
+
+
 @Component({
-    selector:'dashboard',
-    templateUrl:'app/dashboard.component.html',
-    pipes:[MapToIterable]
+    selector: 'dashboard',
+    templateUrl: 'app/dashboard.component.html',
+    pipes: [MapToIterable, SlashIfMissing]
 
 })
 
@@ -19,15 +22,16 @@ export class DashboardComponent implements OnInit {
     loadingEndpoints:boolean = true;
 
     appsElevation:number = 1;
-    
-    apps : Application[];
-    errorString: string;
-    
+    animatedShadow:boolean = true;
+
+    apps:Application[];
+    errorString:string;
+
     constructor(private _dom:ElementRef,
                 private _anakinService:AnakinService) {
 
     }
-    
+
     ngOnInit() {
         console.log("DashboardComponent  init");
         this.getApplications()
@@ -40,7 +44,7 @@ export class DashboardComponent implements OnInit {
     onLeaveApplications() {
         this.appsElevation = 1;
     }
-    
+
     getApplications() {
         this._anakinService.getApplications()
             .subscribe(
@@ -57,6 +61,8 @@ export class DashboardComponent implements OnInit {
 
         if (this.errorString) {
             console.error(this.errorString);
+        } else {
+            console.log(JSON.stringify(this.apps))
         }
     }
 

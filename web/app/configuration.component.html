@@ -1,3 +1,38 @@
-<div>
-    <h3>Configuration Content</h3>
+<div class="flex horizontal layout" style="margin-left: 10px; position:relative">
+    <paper-spinner [(active)]="loadingApps"></paper-spinner>
+
+    <div *ngFor="#app of apps">
+
+        <paper-card heading="{{app.name}}" [animatedShadow]="animatedShadow" [elevation]="appsElevation"
+                    on-mouseover="onHoverApplications()"
+                    on-mouseout="onLeaveApplications()"
+                    style="margin: 10px">
+
+            <div class="card-content">
+                <h4 style="color: #bdced7">Base Url</h4>
+                <span>{{app.baseUrl | slashIfMissing}}</span>
+
+                <p></p>
+
+                <h4 style="color: #bdced7">Services</h4>
+
+                <ul>
+                    <li class="flex horizontal" *ngFor="#service of app.services | mapToIterable">
+                        Url: {{service.value | slashIfMissing}}
+                        <span *ngIf="service.nested">Nested</span>
+                    </li>
+                </ul>
+
+                <p></p>
+                <h4 style="color: #bdced7">State</h4>
+                {{app.state | uppercase}}
+            </div>
+            <div class="card-actions">
+                <paper-button>Configure</paper-button>
+                <paper-button>Stats</paper-button>
+            </div>
+        </paper-card>
+
+    </div>
+
 </div>

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/gorilla/mux"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -243,7 +242,7 @@ func handleServices(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 
 		w.Header().Add("Content-Type", "application/json")
-		err := json.NewEncoder(w).Encode(app.ServicesSet())
+		err := json.NewEncoder(w).Encode(app.ServicesCopy())
 
 		if err != nil {
 			internalError(w, err)
@@ -276,7 +275,7 @@ func handleServices(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		for serviceId, _ := range app.ServicesSet() {
+		for serviceId, _ := range app.ServicesCopy() {
 
 			svc, err := store.GetService(serviceId)
 
@@ -289,6 +288,11 @@ func handleServices(w http.ResponseWriter, r *http.Request) {
 				badRequest(w, errors.New("Service url is already present"))
 				return
 			}
+		}
+
+		if s.ServiceUrl == "" {
+			badRequest(w, errors.New("ServiceUrl is mandatory"))
+			return
 		}
 
 		err = store.CreateService(s)
@@ -441,9 +445,9 @@ func handleEndpoints(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	services := app.ServicesSet()
+	services := app.ServicesCopy()
 
-	if len(services) == 0 || !services[serviceId] {
+	if len(services) == 0 || services[serviceId] != "" {
 		http.NotFound(w, r)
 		return
 	}
@@ -563,9 +567,9 @@ func handleEndpoint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	services := app.ServicesSet()
+	services := app.ServicesCopy()
 
-	if len(services) == 0 || !services[serviceId] {
+	if len(services) == 0 || services[serviceId] != "" {
 		http.NotFound(w, r)
 		return
 	}

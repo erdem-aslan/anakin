@@ -16,18 +16,19 @@ const (
 )
 
 type Service struct {
-	UniqueId     string          `json:"id"`
-	ServiceUrl   string          `json:"serviceUrl"`
-	Endpoints    map[string]bool `json:"endpoints"`
-	Tps          int             `json:"tps"`
-	CurrentState State           `json:"state"`
-
-	sync.RWMutex `json:"-"`
-
+	UniqueId        string          `json:"id" bson:"_id,omitempty"`
+	ServiceUrl      string          `json:"serviceUrl"`
+	Nested          bool            `json:"nested"`
+	Endpoints       map[string]bool `json:"endpoints"`
+	Tps             int             `json:"tps"`
+	CurrentState    State           `json:"state" bson:"state"`
 	BalanceStrategy BalanceStrategy `json:"balanceStrategy"`
-	serviceEPRing   *ring.Ring
-	serviceEPList   []*Endpoint
-	slb             sync.RWMutex
+
+	sync.RWMutex `json:"-" bson:"-"`
+
+	serviceEPRing *ring.Ring
+	serviceEPList []*Endpoint
+	slb           sync.RWMutex
 }
 
 func (s *Service) Id() string {
