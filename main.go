@@ -7,6 +7,7 @@ import (
 	logger "log"
 	"os"
 	"os/signal"
+	"net"
 )
 
 type State string
@@ -39,6 +40,7 @@ var (
 	registry      *Registry
 	log           *logger.Logger
 	filter        *logutils.LevelFilter
+	stats         *StatsContainer
 )
 
 func init() {
@@ -80,6 +82,8 @@ func main() {
 
 	store.AddListener(registry)
 
+	initStats()
+
 	go serveAdminBackend()
 
 	err = serveProxy(registry)
@@ -106,6 +110,11 @@ func initRegistry() (r *Registry, err error) {
 	err = r.Init(store)
 
 	return
+}
+
+func initStats() {
+	stats = NewStatsContainer()
+	stats.Start()
 }
 
 func attachShutdownHook() {
@@ -141,3 +150,20 @@ func (a SortByDESCLength) Less(i, j int) bool {
 func (a SortByDESCLength) Swap(i, j int) {
 	a[i], a[j] = a[j], a[i]
 }
+
+func GetLocalIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ""
+	}
+	for _, address := range addrs {
+		// check the address type and if it is not a loopback the display it
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	return ""
+}
+

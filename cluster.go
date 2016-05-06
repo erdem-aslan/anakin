@@ -7,6 +7,7 @@ import (
 	"github.com/satori/go.uuid"
 	"os"
 	"strconv"
+	"time"
 )
 
 func initCluster() error {
@@ -21,14 +22,16 @@ func newAnakinCluster() *AnakinCluster {
 }
 
 type AnakinCluster struct {
-	sf   *serf.Serf
-	ec   chan serf.Event
-	Name string
+	sf       *serf.Serf
+	ec       chan serf.Event
+	Name     string
 	nameHash int
+	started  time.Time
 }
 
 func (ac *AnakinCluster) Start(randomNodeName bool) error {
 
+	ac.started = time.Now()
 	sc := serf.DefaultConfig()
 	sc.LogOutput = filter
 	sc.MemberlistConfig.LogOutput = filter
@@ -53,6 +56,23 @@ func (ac *AnakinCluster) Start(randomNodeName bool) error {
 	if sc.Tags == nil {
 		sc.Tags = make(map[string]string)
 	}
+
+	adminIp := config.AdminIp
+
+	if adminIp == "" {
+		adminIp = GetLocalIP()
+	}
+
+	proxyIp := config.ProxyIp
+
+	if proxyIp == "" {
+		proxyIp = GetLocalIP()
+	}
+
+	sc.Tags["adminIp"] = adminIp
+	sc.Tags["adminPort"] = strconv.Itoa(config.AdminPort)
+	sc.Tags["proxyIp"] = proxyIp
+	sc.Tags["proxyPort"] = strconv.Itoa(config.ProxyPort)
 
 	sc.MemberlistConfig.AdvertisePort = config.ClusterPort
 	sc.MemberlistConfig.BindPort = config.ClusterPort
@@ -79,13 +99,57 @@ func (ac *AnakinCluster) Start(randomNodeName bool) error {
 		} else {
 			log.Println("Cluster join was succesful, number of anakin instances: ", n)
 		}
-
 	}
+
+	go func() {
+
+	}()
 
 	return nil
 }
 
-func (ac *AnakinCluster) BroadcastAnakinEvent(e *AnakinEvent) error {
+func (ac *AnakinCluster) Instances() (others []*Instance, local *Instance) {
+
+	members := ac.sf.Members()
+
+	others = make([]*Instance, 0, len(members))
+
+	for _, member := range members {
+
+		if member.Name == ac.Name {
+			local = ac.LocalInstance()
+			continue
+		}
+
+		others = append(others, &Instance{
+			Id:        member.Name,
+			AdminPort: member.Tags["adminPort"],
+			AdminIp:   member.Tags["adminIp"],
+			ProxyIp:   member.Tags["proxyIp"],
+			ProxyPort: member.Tags["proxyPort"],
+		})
+	}
+
+	return
+}
+
+func (ac *AnakinCluster) LocalInstance() *Instance {
+
+	return &Instance{
+		ac.Name,
+		Version,
+		strconv.Itoa(config.AdminPort),
+		config.AdminIp,
+		config.ProxyIp,
+		strconv.Itoa(config.ProxyPort),
+		ac.started,
+		Active,
+		stats.InstanceStats(),
+	}
+
+}
+
+func (ac *AnakinCluster) BroadcastAnakinEvent(e *ClusterEvent) error {
 
 	e.Sender = ac.nameHash
 	var buffer bytes.Buffer
@@ -198,7 +262,7 @@ func (ac *AnakinCluster) handleUserEvent(e serf.UserEvent) {
 
 	dec := gob.NewDecoder(bytes.NewReader(e.Payload))
 
-	var m AnakinEvent
+	var m ClusterEvent
 
 	err := dec.Decode(&m)
 
@@ -210,8 +274,6 @@ func (ac *AnakinCluster) handleUserEvent(e serf.UserEvent) {
 	if m.Sender == ac.nameHash {
 		return
 	}
-
-
 
 	registry.RemoteRegistryEvent(m)
 }
@@ -233,8 +295,20 @@ const (
 	EndpDeleted
 )
 
-type AnakinEvent struct {
+type ClusterEvent struct {
 	Sender    int
 	EventType EventType
 	Payload   string
+}
+
+type Instance struct {
+	Id        string
+	Version   string
+	AdminPort string
+	AdminIp   string
+	ProxyIp   string
+	ProxyPort string
+	Started   time.Time
+	State     State
+	Stats     InstanceStats `json:"stats,omitempty"`
 }

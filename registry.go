@@ -376,7 +376,7 @@ func (r *Registry) EndpointRemoved(id string) {
 	delete(r.apps, id)
 }
 
-func (r *Registry) RemoteRegistryEvent(message AnakinEvent) {
+func (r *Registry) RemoteRegistryEvent(message ClusterEvent) {
 
 	payload := message.Payload
 

@@ -131,14 +131,8 @@ func (ms *MongoStore) CreateApplication(a *Application) error {
 		}
 		ms.ll.RUnlock()
 
-		erro := anakinCluster.BroadcastAnakinEvent(&AnakinEvent{
-			EventType: AppCreated,
-			Payload:   a.UniqueId,
-		})
+		broadcastEvent(AppCreated, a.Id())
 
-		if erro != nil {
-			log.Println("Failed notifiying the cluster, error: ", err)
-		}
 	}
 
 	return err
@@ -164,15 +158,7 @@ func (ms *MongoStore) UpdateApplication(a *Application) error {
 		}
 		ms.ll.RUnlock()
 
-		erro := anakinCluster.BroadcastAnakinEvent(&AnakinEvent{
-			EventType: AppUpdated,
-			Payload:   a.UniqueId,
-		})
-
-		if erro != nil {
-			log.Println("Failed notifiying the cluster, error: ", err)
-		}
-
+		broadcastEvent(AppUpdated, a.Id())
 	}
 
 	return err
@@ -203,15 +189,7 @@ func (ms *MongoStore) DeleteApplication(id string) error {
 		}
 		ms.ll.RUnlock()
 
-		erro := anakinCluster.BroadcastAnakinEvent(&AnakinEvent{
-			EventType: AppDeleted,
-			Payload:   a.UniqueId,
-		})
-
-		if erro != nil {
-			log.Println("Failed notifiying the cluster, error: ", err)
-		}
-
+		broadcastEvent(AppDeleted, id)
 	}
 
 	return err
@@ -239,15 +217,7 @@ func (ms *MongoStore) CreateService(s *Service) (err error) {
 		}
 		ms.ll.RUnlock()
 
-		erro := anakinCluster.BroadcastAnakinEvent(&AnakinEvent{
-			EventType: SvcCreated,
-			Payload:   s.UniqueId,
-		})
-
-		if erro != nil {
-			log.Println("Failed notifiying the cluster, error: ", err)
-		}
-
+		broadcastEvent(SvcCreated, s.Id())
 	}
 
 	return err
@@ -275,14 +245,8 @@ func (ms *MongoStore) DeleteService(id string) error {
 		}
 		ms.ll.RUnlock()
 
-		erro := anakinCluster.BroadcastAnakinEvent(&AnakinEvent{
-			EventType: SvcDeleted,
-			Payload:   s.UniqueId,
-		})
+		broadcastEvent(SvcDeleted, id)
 
-		if erro != nil {
-			log.Println("Failed notifiying the cluster, error: ", err)
-		}
 	}
 
 	return err
@@ -317,15 +281,7 @@ func (ms *MongoStore) UpdateService(s *Service) error {
 		}
 		ms.ll.RUnlock()
 
-		erro := anakinCluster.BroadcastAnakinEvent(&AnakinEvent{
-			EventType: SvcUpdated,
-			Payload:   s.UniqueId,
-		})
-
-		if erro != nil {
-			log.Println("Failed notifiying the cluster, error: ", err)
-		}
-
+		broadcastEvent(SvcUpdated, s.Id())
 	}
 
 	return err
@@ -343,14 +299,7 @@ func (ms *MongoStore) CreateEndpoint(e *Endpoint) (err error) {
 		}
 		ms.ll.RUnlock()
 
-		erro := anakinCluster.BroadcastAnakinEvent(&AnakinEvent{
-			EventType: EndpCreated,
-			Payload:   e.UniqueId,
-		})
-
-		if erro != nil {
-			log.Println("Failed notifiying the cluster, error: ", err)
-		}
+		broadcastEvent(EndpCreated, e.Id())
 
 	}
 
@@ -368,15 +317,7 @@ func (ms *MongoStore) DeleteEndpoint(id string) error {
 		}
 		ms.ll.RUnlock()
 
-		erro := anakinCluster.BroadcastAnakinEvent(&AnakinEvent{
-			EventType: EndpDeleted,
-			Payload:   id,
-		})
-
-		if erro != nil {
-			log.Println("Failed notifiying the cluster, error: ", err)
-		}
-
+		broadcastEvent(EndpDeleted, id)
 	}
 
 	return err
@@ -411,15 +352,7 @@ func (ms *MongoStore) UpdateEndpoint(e *Endpoint) error {
 		}
 		ms.ll.RUnlock()
 
-		erro := anakinCluster.BroadcastAnakinEvent(&AnakinEvent{
-			EventType: EndpUpdated,
-			Payload:   e.UniqueId,
-		})
-
-		if erro != nil {
-			log.Println("Failed notifiying the cluster, error: ", err)
-		}
-
+		broadcastEvent(EndpUpdated, e.Id())
 	}
 
 	return err
@@ -593,6 +526,8 @@ func (fs *FsStore) CreateApplication(a *Application) error {
 			go lis.ApplicationAdded(a)
 		}
 		fs.ll.RUnlock()
+
+		broadcastEvent(AppCreated, a.Id())
 	}
 
 	return err
@@ -623,6 +558,8 @@ func (fs *FsStore) DeleteApplication(id string) error {
 			go lis.ApplicationRemoved(id)
 		}
 		fs.ll.RUnlock()
+
+		broadcastEvent(AppDeleted, id)
 	}
 
 	return err
@@ -638,6 +575,8 @@ func (fs *FsStore) UpdateApplication(a *Application) error {
 			go lis.ApplicationUpdated(a)
 		}
 		fs.ll.RUnlock()
+
+		broadcastEvent(AppUpdated, a.Id())
 	}
 
 	return err
@@ -670,6 +609,8 @@ func (fs *FsStore) CreateService(s *Service) error {
 			go lis.ServiceAdded(s)
 		}
 		fs.ll.RUnlock()
+
+		broadcastEvent(SvcCreated, s.Id())
 	}
 
 	return err
@@ -695,6 +636,8 @@ func (fs *FsStore) DeleteService(id string) error {
 			go lis.ServiceRemoved(id)
 		}
 		fs.ll.RUnlock()
+
+		broadcastEvent(SvcDeleted, id)
 	}
 
 	return err
@@ -709,6 +652,8 @@ func (fs *FsStore) UpdateService(s *Service) error {
 			go lis.ServiceUpdated(s)
 		}
 		fs.ll.RUnlock()
+
+		broadcastEvent(SvcUpdated, s.Id())
 	}
 
 	return err
@@ -739,6 +684,8 @@ func (fs *FsStore) CreateEndpoint(e *Endpoint) error {
 			go lis.EndpointAdded(e)
 		}
 		fs.ll.RUnlock()
+
+		broadcastEvent(EndpCreated, e.Id())
 	}
 
 	return err
@@ -754,6 +701,8 @@ func (fs *FsStore) DeleteEndpoint(id string) error {
 			go lis.EndpointRemoved(id)
 		}
 		fs.ll.RUnlock()
+
+		broadcastEvent(EndpDeleted, id)
 	}
 
 	return err
@@ -768,6 +717,8 @@ func (fs *FsStore) UpdateEndpoint(e *Endpoint) error {
 			go lis.EndpointUpdated(e)
 		}
 		fs.ll.RUnlock()
+
+		broadcastEvent(EndpUpdated, e.Id())
 	}
 
 	return err
@@ -1016,4 +967,16 @@ func (fs *FsStore) AddListener(listener StoreListener) error {
 
 func (fs *FsStore) RemoveListener(listener StoreListener) {
 	delete(fs.l, listener)
+}
+
+func broadcastEvent(eventType EventType, id string) {
+
+	err := anakinCluster.BroadcastAnakinEvent(&ClusterEvent{
+		EventType: eventType,
+		Payload:   id,
+	})
+
+	if err != nil {
+		log.Println("Failed notifiying the cluster, error: ", err)
+	}
 }

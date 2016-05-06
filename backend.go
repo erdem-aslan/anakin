@@ -16,6 +16,14 @@ func serveAdminBackend() {
 		handlePing).
 		Methods("GET")
 
+	r.HandleFunc("/anakin/v1/cluster",
+		handleCluster).
+		Methods("GET")
+
+	r.HandleFunc("/anakin/v1/local",
+		handleLocal).
+		Methods("GET")
+
 	r.HandleFunc("/anakin/v1/apps",
 		handleApplications).
 		Methods("GET", "POST")
@@ -57,6 +65,72 @@ func serveAdminBackend() {
 
 func handlePing(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
+}
+
+func handleCluster(w http.ResponseWriter, r *http.Request) {
+
+	others, local := anakinCluster.Instances()
+
+	instances :=  make([]*Instance, 0)
+	instances = append(instances, local)
+
+	if others != nil || len(others) != 0 {
+
+		for _, instance := range others {
+
+			req, _ := http.NewRequest("GET", "http://" + instance.AdminIp +
+				":" + instance.AdminPort + "/anakin/v1/local", nil)
+
+			req.Header.Set("Accept", "application/json")
+
+			resp, err := http.DefaultClient.Do(req)
+
+
+			if err != nil {
+				log.Println("Instance cannot be reached: ", instance, err)
+				instance.State = Failing
+				continue
+			}
+
+			var remote *Instance = new(Instance)
+
+			decoder := json.NewDecoder(resp.Body)
+			err = decoder.Decode(remote)
+
+			if err != nil {
+				internalError(w, err)
+				return
+			}
+
+			instances = append(instances, remote)
+
+		}
+	}
+
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	err := json.NewEncoder(w).Encode(instances)
+
+	if err != nil {
+		internalError(w, err)
+		return
+	}
+}
+
+func handleLocal(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	err := json.NewEncoder(w).Encode(anakinCluster.LocalInstance())
+
+	if err != nil {
+		internalError(w, err)
+		return
+	}
+
 }
 
 func handleApplications(w http.ResponseWriter, r *http.Request) {
