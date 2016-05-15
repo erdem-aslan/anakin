@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"github.com/hashicorp/serf/serf"
 	"github.com/satori/go.uuid"
+	"net"
 	"os"
 	"strconv"
 	"time"
@@ -88,10 +89,10 @@ func (ac *AnakinCluster) Start(randomNodeName bool) error {
 	ac.sf = s
 
 	if len(config.ClusterMembers) != 0 {
-		n, err := ac.sf.Join(config.ClusterMembers, false)
+		n, err := ac.sf.Join(config.ClusterMembers, true)
 
 		if err != nil {
-			return err
+			log.Println("All configured member(s) is/are out of our reach, we are alone...")
 		}
 
 		if n == 1 {
@@ -100,10 +101,6 @@ func (ac *AnakinCluster) Start(randomNodeName bool) error {
 			log.Println("Cluster join was succesful, number of anakin instances: ", n)
 		}
 	}
-
-	go func() {
-
-	}()
 
 	return nil
 }
@@ -302,13 +299,29 @@ type ClusterEvent struct {
 }
 
 type Instance struct {
-	Id        string
-	Version   string
-	AdminPort string
-	AdminIp   string
-	ProxyIp   string
-	ProxyPort string
-	Started   time.Time
-	State     State
+	Id        string        `json:"id"`
+	Version   string        `json:"version"`
+	AdminPort string        `json:"adminPort"`
+	AdminIp   string        `json:"adminIp"`
+	ProxyIp   string        `json:"proxyIp"`
+	ProxyPort string        `json:"proxyPort"`
+	Started   time.Time     `json:"started"`
+	State     State         `json:"state"`
 	Stats     InstanceStats `json:"stats,omitempty"`
+}
+
+func GetLocalIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ""
+	}
+	for _, address := range addrs {
+		// check the address type and if it is not a loopback the display it
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	return ""
 }

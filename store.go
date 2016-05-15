@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/boltdb/bolt"
 	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"sync"
 	"time"
 )
@@ -408,9 +409,14 @@ func (ms *MongoStore) get(entity Entity, collection string) (err error) {
 }
 
 func (ms *MongoStore) update(entity Entity, collection string) (err error) {
+
 	scopy := ms.session.Copy()
 	defer scopy.Close()
-	info, err := scopy.DB(DB_NAME).C(collection).Upsert(entity.Id(), entity)
+	info, err := scopy.DB(DB_NAME).C(collection).Upsert(bson.D{{"_id", entity.Id()}}, entity)
+
+	if err != nil {
+		return err
+	}
 
 	if info.Updated != 1 {
 		log.Println("Store update has failed for entity:", entity)

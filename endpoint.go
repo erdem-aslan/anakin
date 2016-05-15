@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"github.com/satori/go.uuid"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -11,7 +10,7 @@ import (
 type Endpoint struct {
 	UniqueId     string      `json:"id" bson:"_id,omitempty"`
 	Host         string      `json:"host"`
-	Port         int         `json:"port"`
+	Port         string      `json:"port"`
 	Scheme       string      `json:"scheme"`
 	CurrentState State       `json:"state" bson:"state"`
 	failedCount  int         `json:"-"`
@@ -33,9 +32,7 @@ func (e *Endpoint) Id() string {
 }
 
 func (e *Endpoint) Address() string {
-	host := e.Host
-	port := strconv.Itoa(e.Port)
-	return host + ":" + port
+	return e.Host + ":" + e.Port
 }
 
 func (e *Endpoint) State() State {

@@ -1,0 +1,145 @@
+<paper-toast id="removeAppError" [text]="toastErrorContent"></paper-toast>
+
+<paper-dialog id="delete-self"
+              entry-animation="scale-up-animation"
+              exit-animation="fade-out-animation">
+
+    <h2 style="color: #bdced7">Delete Application ?</h2>
+
+    <div class="buttons">
+        <paper-button dialog-dismiss class="secondary">Cancel</paper-button>
+        <paper-button dialog-confirm raised class="primary" (click)="onRemoveSelf()">Accept
+        </paper-button>
+    </div>
+
+</paper-dialog>
+
+<paper-card heading="{{app.name}}"
+            [animatedShadow]="true"
+            [elevation]="elevation"
+            style="margin: 10px; min-width: 300px;min-height: 280px">
+
+    <div class="card-content">
+
+        <div class="horizontal layout">
+
+            <div class="vertical layout flex">
+                <h4 style="color: #bdced7">Base Path</h4>
+                <div>{{app.baseUrl | slashIfMissing}}</div>
+            </div>
+
+            <div *ngIf="editable" class="horizontal layout end-justified flex">
+
+                <div *ngIf="app.tempEditable">
+                    <paper-icon-button icon="done" title="Done editing"
+                                       role="button" (click)="app.tempEditable = !app.tempEditable; updateSelf()">
+                    </paper-icon-button>
+
+                    <paper-icon-button icon="clear" title="Cancel editing"
+                                       role="button" (click)="app.tempEditable = !app.tempEditable">
+                    </paper-icon-button>
+
+                </div>
+
+                <div *ngIf="!app.tempEditable">
+                    <paper-icon-button icon="create" title="Edit Application"
+                                       role="button" (click)="app.tempEditable = !app.tempEditable">
+                    </paper-icon-button>
+
+                    <paper-icon-button icon="delete" title="Delete Application"
+                                       role="button" (click)="showRemoveSelfDialog()">
+                    </paper-icon-button>
+
+                </div>
+
+            </div>
+        </div>
+
+        <div *ngIf="editable && app.tempEditable" class="horizontal layout wrap">
+            <paper-input label="Base Path: "
+                         ngDefaultControl
+                         [(ngModel)]="app.baseUrl">
+            </paper-input>
+
+        </div>
+
+        <p></p>
+
+        <h4 style="color: #bdced7">State</h4>
+
+        <div class="horizontal layout wrap">
+
+            <div *ngIf="editable && app.tempEditable">
+
+                <paper-dropdown-menu label="State">
+                    <paper-listbox id="selected-state"
+                                   class="dropdown-content"
+                                   style="background-color: #323a3a"
+                                   (iron-select)="selectionChanged()"
+                                   [selected]="stateSelectedIndex">
+                        <paper-item>Active</paper-item>
+                        <paper-item>Passive</paper-item>
+                    </paper-listbox>
+                </paper-dropdown-menu>
+            </div>
+            <div *ngIf="!app.tempEditable" class="capitalize">{{app.state}}</div>
+        </div>
+
+
+        <div *ngIf="editable && app.tempEditable" class="vertical layout">
+
+            <h3>New Service</h3>
+
+            <paper-input label="Path: "
+                         ngDefaultControl
+                         [(ngModel)]="newService.serviceUrl">
+            </paper-input>
+
+            <paper-checkbox [(checked)]="newService.nested">Nested</paper-checkbox>
+
+            <paper-dropdown-menu label="Balance Strategy">
+
+                <paper-listbox class="dropdown-content"
+                               style="background-color: #323a3a"
+                               [(selected)]="bs">
+
+                    <paper-item>Round-robin</paper-item>
+                    <paper-item>Source-hashing</paper-item>
+                </paper-listbox>
+
+            </paper-dropdown-menu>
+
+            <div class="vertical center layout">
+                <paper-button (click)="onCreateNewService()"
+                              style="margin-bottom: 10px; width: 30%"
+                              raised
+                              class="primary">
+                    <iron-icon icon="add-circle"></iron-icon>
+                </paper-button>
+            </div>
+
+        </div>
+        <p></p>
+
+        <!--Services-->
+
+        <h4 *ngIf="servicesPresent()" style="color: #bdced7">Services</h4>
+
+        <ul>
+            <li *ngFor="#service of services">
+
+                <service [app]="app"
+                         [service]="service"
+                         [editable]="editable"
+                         (changed) = "serviceChanged(service)"
+                         (changeError) = "serviceChangeError($event, service)"
+                >
+
+
+                </service>
+
+            </li>
+        </ul>
+    </div>
+
+</paper-card>

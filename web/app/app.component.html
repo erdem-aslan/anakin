@@ -7,11 +7,11 @@
             <h1>ANAKIN</h1>
         </paper-toolbar>
 
-        <paper-material class="flex">
-            <paper-menu selected="0">
+        <!--<paper-material class="flex">-->
+            <paper-menu>
                 <paper-item (click)="onDashboardSelected()">
                     <iron-icon icon="dashboard"></iron-icon>
-                    Dashboard
+                    Overview
                 </paper-item>
                 <paper-item (click)="onConfigurationSelected()">
                     <iron-icon icon="apps"></iron-icon>
@@ -21,22 +21,15 @@
                     <iron-icon icon="assessment"></iron-icon>
                     Statistics
                 </paper-item>
-
-                <paper-item (click)="onMonitoringSelected()">
-                    <iron-icon icon="info"></iron-icon>
-                    Monitoring
-                </paper-item>
-
             </paper-menu>
-        </paper-material>
+        <!--</paper-material>-->
     </paper-header-panel>
 
     <paper-header-panel main style="background-color: #343434">
 
         <paper-toolbar class="medium">
             <paper-icon-button icon="menu" paper-drawer-toggle></paper-icon-button>
-            <div class="title">Force Balancer {{version}}</div>
-            <paper-icon-button icon="help"></paper-icon-button>
+            <h3>Force Balancer</h3>
         </paper-toolbar>
 
             <router-outlet></router-outlet>

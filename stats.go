@@ -206,23 +206,23 @@ func (s *StatsContainer) Stop() {
 }
 
 type InstanceStats struct {
-	Os       string
-	CpuCores int
-	Mem      string
-	Rps      float64 // Request per second
+	Os       string  `json:"os"`
+	CpuCores int     `json:"cpuCores"`
+	Mem      string  `json:"mem"`
+	Rps      float64 `json:"rps"`
 }
 
 type ApplicationStats struct {
-	Name string  // app name
-	Rps  float64 // Request per second
+	Name string  `json:"name"`
+	Rps  float64 `json:"rps"`
 }
 
 type ServiceStats struct {
-	Id  string
-	Rps float64
+	Id  string  `json:"id"`
+	Rps float64 `json:"rps"`
 }
 
 type EndpointStats struct {
-	Id  string
-	Rps float64
+	Id  string  `json:"id"`
+	Rps float64 `json:"rps"`
 }

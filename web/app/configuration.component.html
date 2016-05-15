@@ -1,38 +1,63 @@
-<div class="flex horizontal layout" style="margin-left: 10px; position:relative">
-    <paper-spinner [(active)]="loadingApps"></paper-spinner>
+<div class="vertical layout wrap" style="margin-bottom: 20px; margin-left: 50px; position:relative">
 
-    <div *ngFor="#app of apps">
+    <paper-toast id="createAppError" [text]="error"></paper-toast>
+    <paper-toast id="getAppsError" [text]="appsError"></paper-toast>
+    <paper-toast id="appChangeError" [text]="appChangeError"></paper-toast>
 
-        <paper-card heading="{{app.name}}" [animatedShadow]="animatedShadow" [elevation]="appsElevation"
-                    on-mouseover="onHoverApplications()"
-                    on-mouseout="onLeaveApplications()"
-                    style="margin: 10px">
+    <h3 class="start">New Application</h3>
+    <paper-material elevation="5" animated style="max-width: 700px">
 
-            <div class="card-content">
-                <h4 style="color: #bdced7">Base Url</h4>
-                <span>{{app.baseUrl | slashIfMissing}}</span>
+        <div style="margin: 30px;">
 
-                <p></p>
+            <paper-input label="Name"
+                         ngDefaultControl
+                         [(ngModel)]="newApp.name">
+            </paper-input>
 
-                <h4 style="color: #bdced7">Services</h4>
+            <paper-input label="baseUrl"
+                         ngDefaultControl
+                         [(ngModel)]="newApp.baseUrl">
+            </paper-input>
 
-                <ul>
-                    <li class="flex horizontal" *ngFor="#service of app.services | mapToIterable">
-                        Url: {{service.value | slashIfMissing}}
-                        <span *ngIf="service.nested">Nested</span>
-                    </li>
-                </ul>
+            <paper-dropdown-menu label="State">
+                <paper-listbox id="selected-state" class="dropdown-content"
+                               style="background-color: #323a3a"
+                               selected="0">
+                    <paper-item>Active</paper-item>
+                    <paper-item>Passive</paper-item>
+                </paper-listbox>
+            </paper-dropdown-menu>
 
-                <p></p>
-                <h4 style="color: #bdced7">State</h4>
-                {{app.state | uppercase}}
+            <div class="vertical center layout">
+                <paper-button (click)="onCreateNewApplication()"
+                              style="margin-bottom: 10px; width: 30%"
+                              raised
+                              class="primary">
+                    <iron-icon icon="add-circle"></iron-icon>
+                </paper-button>
             </div>
-            <div class="card-actions">
-                <paper-button>Configure</paper-button>
-                <paper-button>Stats</paper-button>
-            </div>
-        </paper-card>
+        </div>
+    </paper-material>
+
+    <h3 style="color: #bdced7; font-kerning: auto">Edit Applications</h3>
+
+
+    <paper-toast id="removeAppError" [text]="toastErrorContent"></paper-toast>
+
+    <div class="wrap horizontal layout">
+        <paper-input #listFilter label="search via application name"></paper-input>
+        <paper-spinner [(active)]="loadingApps"></paper-spinner>
+    </div>
+    <div class="horizontal layout wrap">
+        <div *ngFor="#app of apps | searchFilterByName:listFilter.value">
+            <application [app]="app"
+                         [editable]="true"
+                         (changeError)="onAppChangeError($event)"
+                         (changed)="onAppChanged($event)"
+            ></application>
+        </div>
 
     </div>
+
 
 </div>

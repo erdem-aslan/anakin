@@ -7,7 +7,6 @@ import (
 	logger "log"
 	"os"
 	"os/signal"
-	"net"
 )
 
 type State string
@@ -139,31 +138,67 @@ func hash(s string) int {
 }
 
 // Helper wrapper type which implements sort.Interface
-type SortByDESCLength []string
+type SortByDESCServiceUrlLength []*Service
 
-func (a SortByDESCLength) Len() int {
+func (a SortByDESCServiceUrlLength) Len() int {
 	return len(a)
 }
-func (a SortByDESCLength) Less(i, j int) bool {
-	return len(a[i]) > len(a[j])
+func (a SortByDESCServiceUrlLength) Less(i, j int) bool {
+
+	if a[i] != nil && a[j] != nil {
+		return len(a[i].ServiceUrl) > len(a[j].ServiceUrl)
+	}
+
+	return true
 }
-func (a SortByDESCLength) Swap(i, j int) {
+func (a SortByDESCServiceUrlLength) Swap(i, j int) {
 	a[i], a[j] = a[j], a[i]
 }
 
-func GetLocalIP() string {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return ""
-	}
-	for _, address := range addrs {
-		// check the address type and if it is not a loopback the display it
-		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				return ipnet.IP.String()
-			}
-		}
-	}
-	return ""
+type SortInstanceById []*Instance
+
+func (a SortInstanceById) Len() int {
+	return len(a)
+}
+func (a SortInstanceById) Less(i, j int) bool {
+	return hash(a[i].Id) < hash(a[j].Id)
+}
+func (a SortInstanceById) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
 }
 
+type SortAppById []*Application
+
+func (a SortAppById) Len() int {
+	return len(a)
+}
+func (a SortAppById) Less(i, j int) bool {
+	return hash(a[i].Id()) < hash(a[j].Id())
+}
+func (a SortAppById) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
+}
+
+type SortServiceById []*Service
+
+func (a SortServiceById) Len() int {
+	return len(a)
+}
+func (a SortServiceById) Less(i, j int) bool {
+	return hash(a[i].Id()) < hash(a[j].Id())
+}
+func (a SortServiceById) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
+}
+
+type SortEndpointById []*Endpoint
+
+func (a SortEndpointById) Len() int {
+	return len(a)
+}
+func (a SortEndpointById) Less(i, j int) bool {
+	return hash(a[i].Id()) < hash(a[j].Id())
+}
+func (a SortEndpointById) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
+}

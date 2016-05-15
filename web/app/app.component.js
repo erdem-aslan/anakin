@@ -1,4 +1,4 @@
-System.register(['angular2/core', "angular2/router", "./dashboard.component", "./configuration.component", "./statistics.component", "./monitoring.component", "./anakin.service"], function(exports_1, context_1) {
+System.register(['angular2/core', "angular2/router", "./dashboard.component", "./configuration.component", "./statistics.component", "./anakin.service"], function(exports_1, context_1) {
     "use strict";
     var __moduleName = context_1 && context_1.id;
     var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
@@ -10,8 +10,8 @@ System.register(['angular2/core', "angular2/router", "./dashboard.component", ".
     var __metadata = (this && this.__metadata) || function (k, v) {
         if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
     };
-    var core_1, router_1, router_2, dashboard_component_1, configuration_component_1, statistics_component_1, monitoring_component_1, anakin_service_1;
-    var AppComponent, AnakinInstance, Endpoint;
+    var core_1, router_1, router_2, dashboard_component_1, configuration_component_1, statistics_component_1, anakin_service_1;
+    var AppComponent;
     return {
         setters:[
             function (core_1_1) {
@@ -30,9 +30,6 @@ System.register(['angular2/core', "angular2/router", "./dashboard.component", ".
             function (statistics_component_1_1) {
                 statistics_component_1 = statistics_component_1_1;
             },
-            function (monitoring_component_1_1) {
-                monitoring_component_1 = monitoring_component_1_1;
-            },
             function (anakin_service_1_1) {
                 anakin_service_1 = anakin_service_1_1;
             }],
@@ -44,8 +41,6 @@ System.register(['angular2/core', "angular2/router", "./dashboard.component", ".
                     this._anakinService = _anakinService;
                 }
                 AppComponent.prototype.ngOnInit = function () {
-                    console.log("App Component init");
-                    this.version = this._anakinService.getAnakinVersion();
                 };
                 AppComponent.prototype.onDashboardSelected = function () {
                     this._router.navigate(['Dashboard']);
@@ -62,10 +57,6 @@ System.register(['angular2/core', "angular2/router", "./dashboard.component", ".
                     this._router.navigate(['Statistics']);
                     this.toggleAnakinDrawer();
                 };
-                AppComponent.prototype.onMonitoringSelected = function () {
-                    this._router.navigate(['Monitoring']);
-                    this.toggleAnakinDrawer();
-                };
                 AppComponent = __decorate([
                     core_1.Component({
                         selector: 'app',
@@ -76,26 +67,13 @@ System.register(['angular2/core', "angular2/router", "./dashboard.component", ".
                     router_2.RouteConfig([
                         { path: 'dashboard', name: 'Dashboard', component: dashboard_component_1.DashboardComponent, useAsDefault: true },
                         { path: 'configuration', name: 'Configuration', component: configuration_component_1.ConfigurationComponent },
-                        { path: 'statistics', name: 'Statistics', component: statistics_component_1.StatisticsComponent },
-                        { path: 'monitoring', name: 'Monitoring', component: monitoring_component_1.MonitoringComponent }
+                        { path: 'statistics', name: 'Statistics', component: statistics_component_1.StatisticsComponent }
                     ]), 
                     __metadata('design:paramtypes', [router_1.Router, core_1.ElementRef, anakin_service_1.AnakinService])
                 ], AppComponent);
                 return AppComponent;
             }());
             exports_1("AppComponent", AppComponent);
-            AnakinInstance = (function () {
-                function AnakinInstance() {
-                }
-                return AnakinInstance;
-            }());
-            exports_1("AnakinInstance", AnakinInstance);
-            Endpoint = (function () {
-                function Endpoint() {
-                }
-                return Endpoint;
-            }());
-            exports_1("Endpoint", Endpoint);
         }
     }
 });

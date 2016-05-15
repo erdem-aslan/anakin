@@ -60,7 +60,6 @@ func (r *Registry) Init(store Store) error {
 
 	r.el.Lock()
 	for _, end := range endSlice {
-		log.Println("Caching endpoint: ", end)
 		r.endpoints[end.UniqueId] = end
 	}
 	r.el.Unlock()
@@ -73,6 +72,8 @@ func (r *Registry) Init(store Store) error {
 
 	r.sl.Lock()
 	for _, service := range serviceSlice {
+
+		log.Println("Caching service:", service, " with id:", service.UniqueId)
 
 		r.services[service.UniqueId] = service
 
@@ -140,10 +141,11 @@ func (r *Registry) ExtractBaseUrl(target *url.URL) (baseUrl string, err error) {
 	baseUrl = tmp[0]
 	// Rewrite the request's path without the prefix.
 	target.Path = "/" + strings.Join(tmp[1:], "/")
-	return baseUrl, nil
+	return "/" + baseUrl, nil
 }
 
 func (r *Registry) ServiceForRequest(request *http.Request) *Service {
+
 
 	target := request.URL
 	baseUrl, err := r.ExtractBaseUrl(target)
@@ -153,16 +155,9 @@ func (r *Registry) ServiceForRequest(request *http.Request) *Service {
 		return nil
 	}
 
-	apps, err := store.GetApplications()
-
-	if err != nil {
-		log.Println("Error: ", err)
-		return nil
-	}
-
 	var matchedApp *Application = nil
 
-	for _, app := range apps {
+	for _, app := range r.apps {
 
 		if app.BaseUrl == baseUrl && app.State == Active {
 			matchedApp = app
@@ -174,23 +169,18 @@ func (r *Registry) ServiceForRequest(request *http.Request) *Service {
 		return nil
 	}
 
+	stats.IncrementApp(matchedApp.Name)
+
 	services := matchedApp.ServicesSorted()
 
 	if len(services) == 0 {
 		log.Println("No services has defined for base url: ", baseUrl)
+		return nil
 	}
 
 	var matchedService *Service = nil
 
-	for _, serviceId := range services {
-
-		service := r.GetService(serviceId)
-
-		if service == nil {
-			log.Println("Registry cache mismatch, reconstructing...")
-			r.Init(r.s)
-			return nil
-		}
+	for _, service := range services {
 
 		if service.Nested {
 			if strings.HasPrefix(target.Path, service.ServiceUrl) {
@@ -207,6 +197,9 @@ func (r *Registry) ServiceForRequest(request *http.Request) *Service {
 
 	if matchedService == nil {
 		log.Println("No service for target path: ", target.Path)
+	} else {
+		stats.IncrementService(matchedService.UniqueId)
+		log.Println("Matched app: ", matchedApp, ", matched service: ", matchedService)
 	}
 
 	return matchedService

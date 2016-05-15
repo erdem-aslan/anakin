@@ -1,0 +1,109 @@
+<div style="margin-left: 10px; position:relative">
+
+    <paper-tabs id="dashboard-tabs"
+                [selected]="selectedTab"
+                (iron-select)="onDashboardTabSelected($event)">
+        <paper-tab>Cluster</paper-tab>
+        <paper-tab>Applications</paper-tab>
+    </paper-tabs>
+
+    <iron-pages selected="{{selectedTab}}">
+
+        <div>
+
+            <h3 style="color: #bdced7; font-kerning: auto">Anakin Instances</h3>
+            <div class="wrap horizontal layout">
+                <paper-input #listFilterIns label="search via instance id"></paper-input>
+                <paper-spinner [(active)]="loadingInstances"></paper-spinner>
+            </div>
+
+            <div class="horizontal layout wrap">
+                <div *ngFor="#instance of instances | searchFilterById:listFilterIns.value">
+
+                    <paper-card heading="{{instance.id}}"
+                                [animatedShadow]="animatedShadow"
+                                [elevation]="instancesElevation"
+                                style="margin: 10px;min-width: 280px">
+
+                        <div class="card-content">
+                            <h4 style="color: #bdced7">Version</h4>
+                            <span>{{instance.version}}</span>
+                            <p></p>
+
+                            <h4 style="color: #bdced7">Administration</h4>
+                            <span>Address: {{instance.adminIp}} Port: {{instance.adminPort}}</span>
+                            <p></p>
+
+                            <h4 style="color: #bdced7">Routing</h4>
+                            <span>Address: {{instance.proxyIp}} Port: {{instance.proxyPort}}</span>
+                            <p></p>
+
+                            <h4 style="color: #bdced7">Started</h4>
+                            <span>{{instance.started | dateFormatter}}</span>
+                            <p></p>
+
+                            <h4 style="color: #bdced7">Status</h4>
+                            <span class="capitalize">{{instance.state}}</span>
+                            <p></p>
+
+                            <h4 style="color: #bdced7">Stats</h4>
+                            <ul>
+                                <li><span style="color: #bdced7">OS: </span>
+                                    {{instance.stats.os}}
+                                </li>
+                                <li>
+                                    <span style="color: #bdced7">Cpu Cores: </span>
+                                    {{instance.stats.cpuCores}}
+                                </li>
+                                <li>
+                                    <span style="color: #bdced7">Used Memory: </span>
+                                    {{instance.stats.mem}}
+                                </li>
+
+                                <li>
+                                    <span style="color: #bdced7">Request Rate (/sec): </span>
+                                    <span>{{instance.stats.rps}}</span>
+
+                                </li>
+                            </ul>
+                        </div>
+                    </paper-card>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <h3 style="color: #bdced7; font-kerning: auto">Applications Overview</h3>
+
+            <div class="wrap horizontal layout">
+                <paper-input #listFilter label="search via name"></paper-input>
+                <paper-spinner [(active)]="loadingApps"></paper-spinner>
+            </div>
+
+            <paper-material elevation="5" style="max-width: 60%">
+                <paper-item #item
+                            *ngFor="#app of apps | searchFilterByName:listFilter.value"
+                (click)="item.show= !item.show">
+
+                    <div *ngIf="!item.show" class="horizontal layout wrap">
+                        <h3 style="color: #bdced7;">{{app.name}} </h3>
+                    </div>
+
+                    <div *ngIf="item.show" class="horizontal layout wrap">
+                        <application
+                                [app]="app"
+                                [editable]="false">
+                        </application>
+
+                    </div>
+
+                </paper-item>
+            </paper-material>
+
+
+        </div>
+    </iron-pages>
+
+
+</div>
+

@@ -7,7 +7,6 @@ import {RouteConfig} from "angular2/router";
 import {DashboardComponent} from "./dashboard.component";
 import {ConfigurationComponent} from "./configuration.component";
 import {StatisticsComponent} from "./statistics.component";
-import {MonitoringComponent} from "./monitoring.component";
 import {AnakinService} from "./anakin.service";
 
 @Component({
@@ -20,13 +19,11 @@ import {AnakinService} from "./anakin.service";
 @RouteConfig([
     {path: 'dashboard', name: 'Dashboard', component: DashboardComponent, useAsDefault: true},
     {path: 'configuration', name: 'Configuration', component: ConfigurationComponent},
-    {path: 'statistics', name: 'Statistics', component: StatisticsComponent},
-    {path: 'monitoring', name: 'Monitoring', component: MonitoringComponent}
+    {path: 'statistics', name: 'Statistics', component: StatisticsComponent}
 ])
 
 export class AppComponent implements OnInit {
 
-    version:string;
 
 
     constructor(private _router:Router,
@@ -35,8 +32,6 @@ export class AppComponent implements OnInit {
     }
 
     ngOnInit() {
-        console.log("App Component init");
-        this.version = this._anakinService.getAnakinVersion();
     }
 
     onDashboardSelected() {
@@ -57,27 +52,4 @@ export class AppComponent implements OnInit {
         this._router.navigate(['Statistics']);
         this.toggleAnakinDrawer();
     }
-
-    onMonitoringSelected() {
-        this._router.navigate(['Monitoring']);
-        this.toggleAnakinDrawer();
-    }
-
-}
-
-export class AnakinInstance {
-    id:string;
-    uptime:number;
-    host:string;
-    clustered:boolean;
-    clusterId:string;
-}
-
-
-export class Endpoint {
-    id:string;
-    host:string;
-    port:number;
-    scheme:string;
-    state:string;
 }

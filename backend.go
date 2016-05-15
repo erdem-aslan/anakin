@@ -5,7 +5,9 @@ import (
 	"errors"
 	"github.com/gorilla/mux"
 	"net/http"
+	"sort"
 	"strconv"
+	"strings"
 )
 
 func serveAdminBackend() {
@@ -71,20 +73,19 @@ func handleCluster(w http.ResponseWriter, r *http.Request) {
 
 	others, local := anakinCluster.Instances()
 
-	instances :=  make([]*Instance, 0)
+	instances := make([]*Instance, 0)
 	instances = append(instances, local)
 
 	if others != nil || len(others) != 0 {
 
 		for _, instance := range others {
 
-			req, _ := http.NewRequest("GET", "http://" + instance.AdminIp +
-				":" + instance.AdminPort + "/anakin/v1/local", nil)
+			req, _ := http.NewRequest("GET", "http://"+instance.AdminIp+
+				":"+instance.AdminPort+"/anakin/v1/local", nil)
 
 			req.Header.Set("Accept", "application/json")
 
 			resp, err := http.DefaultClient.Do(req)
-
 
 			if err != nil {
 				log.Println("Instance cannot be reached: ", instance, err)
@@ -107,9 +108,10 @@ func handleCluster(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+
+	sort.Sort(SortInstanceById(instances))
 
 	err := json.NewEncoder(w).Encode(instances)
 
@@ -148,6 +150,8 @@ func handleApplications(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
+
+		sort.Sort(SortAppById(applications))
 
 		err := json.NewEncoder(w).Encode(applications)
 
@@ -193,6 +197,11 @@ func handleApplications(w http.ResponseWriter, r *http.Request) {
 		for _, ap := range apps {
 			if ap.Name == app.Name {
 				badRequest(w, errors.New("Name already present: "+ap.Name))
+				return
+			}
+
+			if ap.BaseUrl == app.BaseUrl {
+				badRequest(w, errors.New("Base url already present: "+ap.BaseUrl))
 				return
 			}
 		}
@@ -267,6 +276,30 @@ func handleApplication(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		apps, err := store.GetApplications()
+
+		if err != nil {
+			internalError(w, err)
+			return
+		}
+
+		for _, a := range apps {
+
+			if a.Id() == app.Id() {
+				continue
+			}
+
+			if a.BaseUrl == app.BaseUrl {
+				badRequest(w, errors.New("Base url already defined: "+app.BaseUrl))
+				return
+			}
+
+			if a.Name == app.Name {
+				badRequest(w, errors.New("Name already defined: "+app.BaseUrl))
+				return
+			}
+		}
+
 		err = store.UpdateApplication(app)
 
 		if err != nil {
@@ -316,7 +349,23 @@ func handleServices(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 
 		w.Header().Add("Content-Type", "application/json")
-		err := json.NewEncoder(w).Encode(app.ServicesCopy())
+
+		services := make([]*Service, 0, 10)
+
+		for serviceId, _ := range app.ServicesCopy() {
+			s, err := store.GetService(serviceId)
+
+			if err != nil {
+				log.Println("Service fetch error:", err)
+				continue
+			}
+
+			services = append(services, s)
+		}
+
+		sort.Sort(SortServiceById(services))
+
+		err := json.NewEncoder(w).Encode(services)
 
 		if err != nil {
 			internalError(w, err)
@@ -349,6 +398,10 @@ func handleServices(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if !strings.HasPrefix(s.ServiceUrl, "/") {
+			s.ServiceUrl = "/" + s.ServiceUrl
+		}
+
 		for serviceId, _ := range app.ServicesCopy() {
 
 			svc, err := store.GetService(serviceId)
@@ -359,7 +412,7 @@ func handleServices(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if svc.ServiceUrl == s.ServiceUrl {
-				badRequest(w, errors.New("Service url is already present"))
+				badRequest(w, errors.New("Service url is already present: "+s.ServiceUrl))
 				return
 			}
 		}
@@ -475,6 +528,24 @@ func handleService(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if !strings.HasPrefix(s.ServiceUrl, "/") {
+			s.ServiceUrl = "/" + s.ServiceUrl
+		}
+
+		for id, serviceUrl := range app.ServicesCopy() {
+
+			if id == s.Id() {
+				continue
+			}
+
+			if s.ServiceUrl == serviceUrl {
+				badRequest(w, errors.New("Service url belongs to other service"))
+				return
+			}
+		}
+
+		log.Println("Update attempt on: ", s)
+
 		err = store.UpdateService(s)
 
 		if err != nil {
@@ -521,7 +592,7 @@ func handleEndpoints(w http.ResponseWriter, r *http.Request) {
 
 	services := app.ServicesCopy()
 
-	if len(services) == 0 || services[serviceId] != "" {
+	if len(services) == 0 || services[serviceId] == "" {
 		http.NotFound(w, r)
 		return
 	}
@@ -536,8 +607,25 @@ func handleEndpoints(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 
 	case "GET":
+
 		w.Header().Add("Content-Type", "application/json")
-		err := json.NewEncoder(w).Encode(s.EndpointsSet())
+
+		endpoints := make([]*Endpoint, 0, 10)
+
+		for id, _ := range s.EndpointsSet() {
+			endp, err := store.GetEndpoint(id)
+
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			endpoints = append(endpoints, endp)
+
+		}
+
+		sort.Sort(SortEndpointById(endpoints))
+
+		err := json.NewEncoder(w).Encode(endpoints)
 
 		if err != nil {
 			internalError(w, err)
@@ -563,8 +651,20 @@ func handleEndpoints(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if e.Host == "" || e.Port == 0 {
+		if e.Host == "" || e.Port == "" {
 			badRequest(w, errors.New("invalid host/port"))
+			return
+		}
+
+		pValue, err := strconv.Atoi(e.Port)
+
+		if err != nil {
+			badRequest(w, errors.New("Port value should be numeric"))
+			return
+		}
+
+		if pValue > 65535 {
+			badRequest(w, errors.New("Port cannot be greater than 65535"))
 			return
 		}
 
@@ -643,7 +743,7 @@ func handleEndpoint(w http.ResponseWriter, r *http.Request) {
 
 	services := app.ServicesCopy()
 
-	if len(services) == 0 || services[serviceId] != "" {
+	if len(services) == 0 || services[serviceId] == "" {
 		http.NotFound(w, r)
 		return
 	}
@@ -703,6 +803,23 @@ func handleEndpoint(w http.ResponseWriter, r *http.Request) {
 
 		if err != nil {
 			badRequest(w, err)
+			return
+		}
+
+		if e.Host == "" || e.Port == "" {
+			badRequest(w, errors.New("invalid host/port"))
+			return
+		}
+
+		pValue, err := strconv.Atoi(e.Port)
+
+		if err != nil {
+			badRequest(w, errors.New("Port value should be numeric"))
+			return
+		}
+
+		if pValue > 65535 {
+			badRequest(w, errors.New("Port cannot be greater than 65535"))
 			return
 		}
 

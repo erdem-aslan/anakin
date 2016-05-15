@@ -31,24 +31,105 @@ System.register(['angular2/core', "angular2/http", "rxjs/Observable", 'rxjs/Rx']
             AnakinService = (function () {
                 function AnakinService(http) {
                     this.http = http;
-                    this.version = "1.0";
                 }
-                AnakinService.prototype.getAnakinVersion = function () {
-                    return this.version;
-                };
                 AnakinService.prototype.getAnakinInstances = function () {
-                };
-                AnakinService.prototype.getApplications = function () {
-                    return this.http.get("/anakin/v1/apps")
+                    var headers = new http_1.Headers();
+                    headers.append("Accept", "application/json");
+                    return this.http.get("/anakin/v1/cluster", {
+                        headers: headers
+                    })
                         .map(function (res) { return res.json(); })
                         .catch(this.handleError);
                 };
-                AnakinService.prototype.getServices = function (applicationId) {
+                AnakinService.prototype.getApplications = function () {
+                    var headers = new http_1.Headers();
+                    headers.append("Accept", "application/json");
+                    return this.http.get("/anakin/v1/apps", {
+                        headers: headers
+                    })
+                        .map(function (res) { return res.json(); })
+                        .catch(this.handleError);
                 };
-                AnakinService.prototype.getEndpoints = function (serviceId) {
+                AnakinService.prototype.getApplication = function (appId) {
+                    var headers = new http_1.Headers();
+                    headers.append("Accept", "application/json");
+                    return this.http.get("/anakin/v1/apps/" + appId, {
+                        headers: headers
+                    })
+                        .map(function (res) { return res.json(); })
+                        .catch(this.handleError);
+                };
+                AnakinService.prototype.updateApplication = function (appId, body) {
+                    var headers = new http_1.Headers();
+                    headers.append("Accept", "application/json");
+                    headers.append("Content-Type", "application/json");
+                    return this.http.put("/anakin/v1/apps/" + appId, JSON.stringify(body), {
+                        headers: headers
+                    }).catch(this.handleError);
+                };
+                AnakinService.prototype.updateService = function (appId, serviceId, body) {
+                    var headers = new http_1.Headers();
+                    headers.append("Accept", "application/json");
+                    headers.append("Content-Type", "application/json");
+                    return this.http.put("/anakin/v1/apps/" + appId + "/services/" + serviceId, JSON.stringify(body), {
+                        headers: headers
+                    }).catch(this.handleError);
+                };
+                AnakinService.prototype.createApplication = function (application) {
+                    var headers = new http_1.Headers();
+                    headers.append("Accept", "application/json");
+                    headers.append("Content-Type", "application/json");
+                    return this.http.post("/anakin/v1/apps", JSON.stringify(application), {
+                        headers: headers
+                    }).map(function (res) { return res.json(); })
+                        .catch(this.handleError);
+                };
+                AnakinService.prototype.deleteApplication = function (id) {
+                    return this.http.delete("/anakin/v1/apps/" + id)
+                        .catch(this.handleError);
+                };
+                AnakinService.prototype.deleteService = function (appId, id) {
+                    return this.http.delete("/anakin/v1/apps/" + appId + "/services/" + id)
+                        .catch(this.handleError);
+                };
+                AnakinService.prototype.deleteEndpoint = function (appId, serviceId, id) {
+                    return this.http.delete("/anakin/v1/apps/" + appId + "/services/" + serviceId + "/endpoints/" + id)
+                        .catch(this.handleError);
+                };
+                AnakinService.prototype.getServices = function (applicationId) {
+                    return this.http.get("/anakin/v1/apps/" + applicationId + "/services")
+                        .map(function (res) { return res.json(); })
+                        .catch(this.handleError);
+                };
+                AnakinService.prototype.getService = function (applicationId, serviceId) {
+                    return this.http.get("/anakin/v1/apps/" + applicationId + "/services/" + serviceId)
+                        .map(function (res) { return res.json(); })
+                        .catch(this.handleError);
+                };
+                AnakinService.prototype.getEndpoints = function (applicationId, serviceId) {
+                    return this.http.get("/anakin/v1/apps/" + applicationId + "/services/" + serviceId + "/endpoints")
+                        .map(function (res) { return res.json(); })
+                        .catch(this.handleError);
+                };
+                AnakinService.prototype.createService = function (applicationId, service) {
+                    var headers = new http_1.Headers();
+                    headers.append("Accept", "application/json");
+                    headers.append("Content-Type", "application/json");
+                    return this.http.post("/anakin/v1/apps/" + applicationId + "/services", JSON.stringify(service), {
+                        headers: headers
+                    }).map(function (res) { return res.json(); })
+                        .catch(this.handleError);
+                };
+                AnakinService.prototype.createEndpoint = function (applicationId, serviceId, endpoint) {
+                    var headers = new http_1.Headers();
+                    headers.append("Accept", "application/json");
+                    headers.append("Content-Type", "application/json");
+                    return this.http.post("/anakin/v1/apps/" + applicationId + "/services/" + serviceId + "/endpoints", JSON.stringify(endpoint), {
+                        headers: headers
+                    }).map(function (res) { return res.json(); })
+                        .catch(this.handleError);
                 };
                 AnakinService.prototype.handleError = function (error) {
-                    console.error(error);
                     return Observable_1.Observable.throw(error.json().error || 'Server error');
                 };
                 AnakinService = __decorate([

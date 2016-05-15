@@ -14,7 +14,7 @@ type Application struct {
 	BaseUrl        string            `json:"baseUrl" bson:"baseUrl"`
 	Services       map[string]string `json:"services" bson:"services"`
 	State          State             `json:"state" bson:"state"`
-	servicesSorted []string
+	servicesSorted []*Service
 	sync.RWMutex   `json:"-" bson:"-"`
 }
 
@@ -37,17 +37,16 @@ func (a *Application) ServicesCopy() map[string]string {
 
 }
 
-func (a *Application) ServicesSorted() []string {
+func (a *Application) ServicesSorted() []*Service {
 
-	a.RLock()
+	//@todo: too many locking, refactor
+	a.Lock()
+	defer a.Unlock()
 
 	if a.servicesSorted != nil {
-		a.RUnlock()
 		return a.servicesSorted
 	}
 
-	a.Lock()
-	defer a.Unlock()
 	a.sortServices()
 
 	return a.servicesSorted
@@ -97,13 +96,15 @@ func (a *Application) RemoveServiceId(id string) {
 }
 
 func (a *Application) sortServices() {
-	a.servicesSorted = make([]string, len(a.Services))
 
-	for _, v := range a.Services {
-		a.servicesSorted = append(a.servicesSorted, v)
+	a.servicesSorted = make([]*Service, 0,len(a.Services))
+
+	for k, _ := range a.Services {
+		service := registry.GetService(k)
+		a.servicesSorted = append(a.servicesSorted, service)
 	}
 
-	sort.Sort(SortByDESCLength(a.servicesSorted))
+	sort.Sort(SortByDESCServiceUrlLength(a.servicesSorted))
 
 }
 

@@ -15,7 +15,7 @@ func serveProxy(reg *Registry) error {
 
 	proxy := NewMultipleHostReverseProxy(reg)
 
-	log.Println("Initializing service orchestrator, finished")
+	log.Println("Initializing service orchestrator, finished, ", config.ProxyIp, config.ProxyPort)
 
 	return http.ListenAndServe(config.ProxyIp+":"+strconv.Itoa(config.ProxyPort), proxy)
 }
@@ -33,8 +33,11 @@ func NewMultipleHostReverseProxy(reg *Registry) *httputil.ReverseProxy {
 
 			endpoint := reg.GetEndpoint(endpointId)
 
+			stats.IncrementEndpoint(endpointId)
+
 			conn, err := net.Dial(network, endpoint.Address())
 
+			//@todo: Fetch a new endpoint instead of giving up
 			if err != nil {
 				endpoint.SetState(Failing)
 				store.UpdateEndpoint(endpoint)
@@ -53,9 +56,7 @@ func NewMultipleHostReverseProxy(reg *Registry) *httputil.ReverseProxy {
 	}
 
 	director := func(req *http.Request) {
-
 		service := reg.ServiceForRequest(req)
-		req.URL.Scheme = "http"
 
 		if service == nil {
 			log.Printf("No service has matched for %s\n", req.URL.Path)
@@ -67,9 +68,9 @@ func NewMultipleHostReverseProxy(reg *Registry) *httputil.ReverseProxy {
 		if endpoint == nil {
 			log.Printf("No endpoint is available/present for %s\n", req.URL.Path)
 			return
-
 		}
 
+		req.URL.Scheme = endpoint.Scheme
 		req.URL.Host = endpoint.UniqueId
 	}
 

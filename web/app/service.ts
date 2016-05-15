@@ -1,14 +1,30 @@
 /**
  * Created by erdemaslan on 27/04/16.
  */
-
 export class Service {
-    
-    constructor(private id:string, 
-                private serviceUrl:string, 
-                private endpoints:string[], 
-                private balanceStrategy:string,
-                private nested:boolean,
-                private state:string) {}
+
+    constructor(public id:string,
+                public serviceUrl:string,
+                public endpoints:string[],
+                public realEndpoints:Endpoint[],
+                public balanceStrategy:string,
+                public nested:boolean,
+                public state:string,
+                public editable?:boolean, 
+                public bsIndex?:number) {
+    }
 
 }
+
+export class Endpoint {
+
+    
+    constructor(public id:string,
+                public host:string,
+                public port:string,
+                public scheme:string,
+                public state:string) {
+
+    }
+}
+

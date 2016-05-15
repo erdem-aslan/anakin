@@ -1,31 +1,51 @@
 /**
  * Created by erdemaslan on 18/04/16.
  */
-import {Component, OnInit, ElementRef} from 'angular2/core';
+import {Component, OnInit, ElementRef, OnDestroy} from 'angular2/core';
+import {Observable} from 'rxjs/Rx';
 import {AnakinService} from "./anakin.service"
+import {ApplicationComponent} from "./application.component";
 import {Application} from "./application";
 import {MapToIterable} from "./mapToIterable"
 import {SlashIfMissing} from "./slashIfMissing";
+import {Instance} from "./instance";
+import {DateFormatter} from "./dateFormatter";
+import {SearchFilterByName} from "./searchFilterByName";
+import {SearchFilterById} from "./searchFilterById";
+import {Subscription} from "rxjs/Subscription";
 
 
 @Component({
     selector: 'dashboard',
     templateUrl: 'app/dashboard.component.html',
-    pipes: [MapToIterable, SlashIfMissing]
-
+    directives:[ApplicationComponent],
+    pipes: [MapToIterable,
+        SlashIfMissing,
+        DateFormatter,
+        SearchFilterByName,
+        SearchFilterById]
 })
 
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
 
+    timerSubscription:Subscription = null;
+
+    loadingInstances:boolean = true;
     loadingApps:boolean = true;
-    loadingServices:boolean = true;
-    loadingEndpoints:boolean = true;
 
-    appsElevation:number = 1;
+
+    instancesElevation:number = 5;
     animatedShadow:boolean = true;
 
+    instances:Instance[];
+    instancesError:string;
+    appsError:string;
+
     apps:Application[];
-    errorString:string;
+
+    selectedTab:number = 0;
+    selectedApp:number = 0;
+
 
     constructor(private _dom:ElementRef,
                 private _anakinService:AnakinService) {
@@ -34,36 +54,58 @@ export class DashboardComponent implements OnInit {
 
     ngOnInit() {
         console.log("DashboardComponent  init");
-        this.getApplications()
+
+        this.getApps();
+        this.getInstances();
+
+        let timer = Observable.timer(1000, 1000);
+        this.timerSubscription = timer.subscribe(t=> {
+            this.getInstances();
+        });
+
     }
 
-    onHoverApplications() {
-        this.appsElevation = 5;
+    ngOnDestroy() {
+
+        if (this.timerSubscription != null) {
+            this.timerSubscription.unsubscribe();
+        }
+
     }
 
-    onLeaveApplications() {
-        this.appsElevation = 1;
-    }
 
-    getApplications() {
-        this._anakinService.getApplications()
+
+    getInstances() {
+        this._anakinService.getAnakinInstances()
             .subscribe(
-                apps => this.apps = apps,
-                error => this.errorString = <any> error,
-                () => this.getApplicationsCompleted()
+                instances => this.instances = instances,
+                error => this.instancesError = <any> error,
+                () => this.getInstancesCompleted()
             );
     }
 
-    getApplicationsCompleted() {
-        console.log("getApps finished");
+    getInstancesCompleted() {
+        this.loadingInstances = false;
 
-        this.loadingApps = false;
-
-        if (this.errorString) {
-            console.error(this.errorString);
-        } else {
-            console.log(JSON.stringify(this.apps))
+        if (this.instancesError) {
+            console.error(this.instancesError);
         }
+    }
+
+    getApps() {
+        this._anakinService.getApplications().subscribe(
+            apps => this.apps = apps,
+            error => this.appsError = <any> error,
+            () => this.getAppsCompleted()
+        );
+    }
+
+    getAppsCompleted() {
+        this.loadingApps = false;
+    }
+
+    onDashboardTabSelected(event) {
+        this.selectedTab = this._dom.nativeElement.querySelector("#dashboard-tabs").selected;
     }
 
 }
