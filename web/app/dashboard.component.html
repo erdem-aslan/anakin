@@ -3,12 +3,48 @@
     <paper-tabs id="dashboard-tabs"
                 [selected]="selectedTab"
                 (iron-select)="onDashboardTabSelected($event)">
-        <paper-tab>Cluster</paper-tab>
         <paper-tab>Applications</paper-tab>
+        <paper-tab>Cluster</paper-tab>
     </paper-tabs>
 
     <iron-pages selected="{{selectedTab}}">
 
+        <div>
+            <div>
+                <h3 style="color: #bdced7; font-kerning: auto">Applications Overview</h3>
+            </div>
+            <div class="wrap horizontal layout">
+                <paper-input #listFilter label="search via name"></paper-input>
+                <paper-spinner [(active)]="loadingApps"></paper-spinner>
+            </div>
+
+            <paper-material elevation="5" style="max-width: 60%">
+                <paper-material #item elevation="2" style="margin: 10px"
+                            *ngFor="#app of apps | searchFilterByName:listFilter.value"
+                >
+
+                    <div class="vertical layout wrap">
+                        <div (click)="item.show = true"
+                             class="horizontal layout wrap fade">
+                            <h3 style="color: #bdced7;">{{app.name}} </h3>
+                        </div>
+
+                        <div *ngIf="item.show" class="horizontal layout wrap">
+                            <paper-icon-button icon="fullscreen-exit" (click)="item.show= !item.show">
+
+                            </paper-icon-button>
+                            <application
+                                    [app]="app"
+                                    [editable]="false">
+                            </application>
+
+                        </div>
+                    </div>
+                </paper-material>
+            </paper-material>
+
+
+        </div>
         <div>
 
             <h3 style="color: #bdced7; font-kerning: auto">Anakin Instances</h3>
@@ -72,36 +108,6 @@
             </div>
         </div>
 
-        <div>
-            <h3 style="color: #bdced7; font-kerning: auto">Applications Overview</h3>
-
-            <div class="wrap horizontal layout">
-                <paper-input #listFilter label="search via name"></paper-input>
-                <paper-spinner [(active)]="loadingApps"></paper-spinner>
-            </div>
-
-            <paper-material elevation="5" style="max-width: 60%">
-                <paper-item #item
-                            *ngFor="#app of apps | searchFilterByName:listFilter.value"
-                (click)="item.show= !item.show">
-
-                    <div *ngIf="!item.show" class="horizontal layout wrap">
-                        <h3 style="color: #bdced7;">{{app.name}} </h3>
-                    </div>
-
-                    <div *ngIf="item.show" class="horizontal layout wrap">
-                        <application
-                                [app]="app"
-                                [editable]="false">
-                        </application>
-
-                    </div>
-
-                </paper-item>
-            </paper-material>
-
-
-        </div>
     </iron-pages>
 
 

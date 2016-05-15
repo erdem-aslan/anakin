@@ -2,6 +2,29 @@
     text-transform: capitalize;
 }
 
+.grow:hover
+{
+    -webkit-transform: scale(1.1);
+    -ms-transform: scale(1.1);
+    transform: scale(1.1);
+}
+
+
+
+div {
+    transition:all 0.3s ease;
+}
+
+.fade
+{
+    opacity:0.5;
+}
+.fade:hover
+{
+    opacity:1;
+    background-color: #323a3a;
+}
+
 @font-face {
     font-family: 'Oswald';
     font-style: normal;
