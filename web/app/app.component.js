@@ -44,6 +44,7 @@ System.register(['angular2/core', "angular2/router", "./dashboard.component", ".
                 };
                 AppComponent.prototype.onDashboardSelected = function () {
                     this._router.navigate(['Dashboard']);
+                    console.log(this._router);
                     this.toggleAnakinDrawer();
                 };
                 AppComponent.prototype.toggleAnakinDrawer = function () {
@@ -51,10 +52,12 @@ System.register(['angular2/core', "angular2/router", "./dashboard.component", ".
                 };
                 AppComponent.prototype.onConfigurationSelected = function () {
                     this._router.navigate(['Configuration']);
+                    console.log(this._router);
                     this.toggleAnakinDrawer();
                 };
                 AppComponent.prototype.onStatisticsSelected = function () {
                     this._router.navigate(['Statistics']);
+                    console.log(this._router);
                     this.toggleAnakinDrawer();
                 };
                 AppComponent = __decorate([

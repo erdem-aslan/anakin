@@ -3,6 +3,7 @@
     <paper-toast id="createAppError" [text]="error"></paper-toast>
     <paper-toast id="getAppsError" [text]="appsError"></paper-toast>
     <paper-toast id="appChangeError" [text]="appChangeError"></paper-toast>
+    <paper-toast id="removeAppError" [text]="toastErrorContent"></paper-toast>
 
     <h3 class="start">New Application</h3>
     <paper-material elevation="5" animated style="max-width: 700px">
@@ -41,23 +42,38 @@
 
     <h3 style="color: #bdced7; font-kerning: auto">Edit Applications</h3>
 
-
-    <paper-toast id="removeAppError" [text]="toastErrorContent"></paper-toast>
-
-    <div class="wrap horizontal layout">
-        <paper-input #listFilter label="search via application name"></paper-input>
+    <div class="horizontal layout">
+        <paper-input ngDefaultControl
+                     [(ngModel)]="filter"
+                     label="search via application name"></paper-input>
         <paper-spinner [(active)]="loadingApps"></paper-spinner>
     </div>
-    <div class="horizontal layout wrap">
-        <div *ngFor="#app of apps | searchFilterByName:listFilter.value">
-            <application [app]="app"
-                         [editable]="true"
-                         (changeError)="onAppChangeError($event)"
-                         (changed)="onAppChanged($event)"
-            ></application>
-        </div>
+    <paper-material elevation="5" style="max-width: 60%">
 
-    </div>
+        <paper-material #item elevation="2" style="margin: 10px"
+                        *ngFor="#app of apps | searchFilterByName:filter"
+        >
 
+            <div class="vertical layout wrap">
+                <div (click)="item.show = true"
+                     class="horizontal layout wrap fade">
+                    <h3 style="color: #bdced7;">{{app.name}} </h3>
+                </div>
+
+                <div *ngIf="item.show" class="horizontal layout wrap">
+                    <paper-icon-button icon="fullscreen-exit" (click)="item.show= !item.show">
+
+                    </paper-icon-button>
+                    <application [app]="app"
+                                 [editable]="true"
+                                 (changeError)="onAppChangeError($event)"
+                                 (changed)="onAppChanged($event)"
+                    ></application>
+                </div>
+            </div>
+        </paper-material>
+    </paper-material>
 
 </div>
+
+

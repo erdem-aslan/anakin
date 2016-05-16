@@ -19,8 +19,9 @@
             </div>
 
             <paper-material elevation="5" style="max-width: 60%">
+
                 <paper-material #item elevation="2" style="margin: 10px"
-                            *ngFor="#app of apps | searchFilterByName:listFilter.value"
+                                *ngFor="#app of apps | searchFilterByName:listFilter.value"
                 >
 
                     <div class="vertical layout wrap">
@@ -42,9 +43,8 @@
                     </div>
                 </paper-material>
             </paper-material>
-
-
         </div>
+
         <div>
 
             <h3 style="color: #bdced7; font-kerning: auto">Anakin Instances</h3>

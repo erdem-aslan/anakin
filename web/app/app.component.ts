@@ -25,7 +25,6 @@ import {AnakinService} from "./anakin.service";
 export class AppComponent implements OnInit {
 
 
-
     constructor(private _router:Router,
                 private _dom:ElementRef,
                 private _anakinService:AnakinService) {
@@ -36,6 +35,7 @@ export class AppComponent implements OnInit {
 
     onDashboardSelected() {
         this._router.navigate(['Dashboard']);
+        console.log(this._router);
         this.toggleAnakinDrawer();
     }
 
@@ -45,11 +45,13 @@ export class AppComponent implements OnInit {
 
     onConfigurationSelected() {
         this._router.navigate(['Configuration']);
+        console.log(this._router);
         this.toggleAnakinDrawer();
     }
 
     onStatisticsSelected() {
         this._router.navigate(['Statistics']);
+        console.log(this._router);
         this.toggleAnakinDrawer();
     }
 }

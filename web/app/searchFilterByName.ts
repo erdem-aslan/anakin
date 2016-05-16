@@ -9,6 +9,11 @@ import {Pipe, PipeTransform} from 'angular2/core';
 
 export class SearchFilterByName implements PipeTransform {
     transform(value:any, args:string[]):any {
+
+        if (args[0] == 'undefined') {
+            return value;
+        }
+
         let filter = args[0].toLocaleLowerCase();
         console.log(filter);
         return filter ? value.filter(entity=> entity.name.toLocaleLowerCase().indexOf(filter) != -1) : value;

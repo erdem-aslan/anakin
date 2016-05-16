@@ -1,4 +1,4 @@
-System.register(['angular2/core', "./anakin.service", "./mapToIterable", "./slashIfMissing", "./searchFilterByName", "./searchFilterById", "angular2/common", "./application.component"], function(exports_1, context_1) {
+System.register(['angular2/core', "./anakin.service", "./mapToIterable", "./slashIfMissing", "./searchFilterByName", "angular2/common", "./application.component"], function(exports_1, context_1) {
     "use strict";
     var __moduleName = context_1 && context_1.id;
     var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
@@ -10,7 +10,7 @@ System.register(['angular2/core', "./anakin.service", "./mapToIterable", "./slas
     var __metadata = (this && this.__metadata) || function (k, v) {
         if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
     };
-    var core_1, anakin_service_1, mapToIterable_1, slashIfMissing_1, searchFilterByName_1, searchFilterById_1, common_1, application_component_1;
+    var core_1, anakin_service_1, mapToIterable_1, slashIfMissing_1, searchFilterByName_1, common_1, application_component_1;
     var ConfigurationComponent;
     return {
         setters:[
@@ -29,9 +29,6 @@ System.register(['angular2/core', "./anakin.service", "./mapToIterable", "./slas
             function (searchFilterByName_1_1) {
                 searchFilterByName_1 = searchFilterByName_1_1;
             },
-            function (searchFilterById_1_1) {
-                searchFilterById_1 = searchFilterById_1_1;
-            },
             function (common_1_1) {
                 common_1 = common_1_1;
             },
@@ -43,6 +40,7 @@ System.register(['angular2/core', "./anakin.service", "./mapToIterable", "./slas
                 function ConfigurationComponent(_anakinService, _dom) {
                     this._anakinService = _anakinService;
                     this._dom = _dom;
+                    this.filter = '';
                     this.newApp = { id: '', name: '', baseUrl: '', services: {}, state: '', error: {} };
                 }
                 ConfigurationComponent.prototype.ngOnInit = function () {
@@ -106,7 +104,7 @@ System.register(['angular2/core', "./anakin.service", "./mapToIterable", "./slas
                     core_1.Component({
                         selector: 'configuration',
                         templateUrl: 'app/configuration.component.html',
-                        pipes: [mapToIterable_1.MapToIterable, slashIfMissing_1.SlashIfMissing, searchFilterByName_1.SearchFilterByName, searchFilterById_1.SearchFilterById],
+                        pipes: [mapToIterable_1.MapToIterable, slashIfMissing_1.SlashIfMissing, searchFilterByName_1.SearchFilterByName],
                         directives: [common_1.NgSwitch, common_1.NgSwitchWhen, common_1.FORM_DIRECTIVES, application_component_1.ApplicationComponent]
                     }), 
                     __metadata('design:paramtypes', [anakin_service_1.AnakinService, core_1.ElementRef])

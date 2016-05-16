@@ -1,12 +1,11 @@
 /**
  * Created by erdemaslan on 19/04/16.
  */
-import {Component, ElementRef, ViewChild, OnInit} from 'angular2/core';
+import {Component, ElementRef, OnInit, ChangeDetectionStrategy} from 'angular2/core';
 import {AnakinService} from "./anakin.service"
 import {MapToIterable} from "./mapToIterable"
 import {SlashIfMissing} from "./slashIfMissing";
 import {SearchFilterByName} from "./searchFilterByName";
-import {SearchFilterById} from "./searchFilterById";
 import {Application} from "./application";
 import {NgSwitch, NgSwitchWhen, FORM_DIRECTIVES} from "angular2/common";
 import {ApplicationComponent} from "./application.component";
@@ -14,19 +13,19 @@ import {ApplicationComponent} from "./application.component";
 @Component({
     selector: 'configuration',
     templateUrl: 'app/configuration.component.html',
-    pipes: [MapToIterable, SlashIfMissing, SearchFilterByName, SearchFilterById],
+    pipes: [MapToIterable, SlashIfMissing, SearchFilterByName],
     directives: [NgSwitch, NgSwitchWhen, FORM_DIRECTIVES, ApplicationComponent]
 })
 
 export class ConfigurationComponent implements OnInit {
-
-    // @ViewChild(AppsComponent) private appsComponent:AppsComponent;
 
     newApp:Application;
     apps:Application[];
     error:string;
     appsError:string;
     appChangeError:string;
+
+    filter:string = '';
 
     constructor(private _anakinService:AnakinService, private _dom:ElementRef) {
         this.newApp = {id: '', name: '', baseUrl: '', services: {}, state: '', error: {}}
