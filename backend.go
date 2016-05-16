@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func serveAdminBackend() {
+func serveAdminBackend(path string) {
 
 	r := mux.NewRouter().StrictSlash(true)
 

@@ -28,10 +28,16 @@ func NewMultipleHostReverseProxy(reg *Registry) *httputil.ReverseProxy {
 		Proxy: http.ProxyFromEnvironment,
 		Dial: func(network, endpointId string) (net.Conn, error) {
 
+			if endpointId == "" {
+				return nil, errors.New("Failed to match any endpoint")
+			}
+
 			// get rid of :80 appended by stack
 			endpointId = strings.Split(endpointId, ":")[0]
 
+			log.Println("Calling endpoint ...")
 			endpoint := reg.GetEndpoint(endpointId)
+			log.Println("Calling endpoint: ", endpoint)
 
 			stats.IncrementEndpoint(endpointId)
 

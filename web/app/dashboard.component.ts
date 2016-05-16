@@ -2,6 +2,7 @@
  * Created by erdemaslan on 18/04/16.
  */
 import {Component, OnInit, ElementRef, OnDestroy} from 'angular2/core';
+import {NumberPipe, DecimalPipe} from 'angular2/common';
 import {Observable} from 'rxjs/Rx';
 import {AnakinService} from "./anakin.service"
 import {ApplicationComponent} from "./application.component";
@@ -23,7 +24,7 @@ import {Subscription} from "rxjs/Subscription";
         SlashIfMissing,
         DateFormatter,
         SearchFilterByName,
-        SearchFilterById]
+        SearchFilterById, DecimalPipe]
 })
 
 export class DashboardComponent implements OnInit, OnDestroy {

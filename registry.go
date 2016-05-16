@@ -73,8 +73,6 @@ func (r *Registry) Init(store Store) error {
 	r.sl.Lock()
 	for _, service := range serviceSlice {
 
-		log.Println("Caching service:", service, " with id:", service.UniqueId)
-
 		r.services[service.UniqueId] = service
 
 		set := service.EndpointsSet()
@@ -126,6 +124,7 @@ func (r *Registry) GetEndpoint(id string) *Endpoint {
 
 func (r *Registry) ExtractBaseUrl(target *url.URL) (baseUrl string, err error) {
 
+	log.Println("Extracting base url from target:", target)
 	path := target.Path
 	// Trim the leading `/`
 	if len(path) > 1 && path[0] == '/' {
@@ -141,6 +140,7 @@ func (r *Registry) ExtractBaseUrl(target *url.URL) (baseUrl string, err error) {
 	baseUrl = tmp[0]
 	// Rewrite the request's path without the prefix.
 	target.Path = "/" + strings.Join(tmp[1:], "/")
+	log.Println("Modified the target path to:", target.Path)
 	return "/" + baseUrl, nil
 }
 
@@ -201,6 +201,8 @@ func (r *Registry) ServiceForRequest(request *http.Request) *Service {
 		stats.IncrementService(matchedService.UniqueId)
 		log.Println("Matched app: ", matchedApp, ", matched service: ", matchedService)
 	}
+
+	log.Println("Matched Service: ",matchedService)
 
 	return matchedService
 }

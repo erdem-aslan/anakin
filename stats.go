@@ -62,32 +62,41 @@ func (s *StatsContainer) UnregisterEndpoint(id string) {
 
 func (s *StatsContainer) IncrementApp(name string) {
 
-	c := s.reg.GetOrRegister("countApp__"+name, func() metrics.Counter {
-		s.reg.Register("meterApp__"+name, metrics.NewMeter())
+
+	c := s.reg.GetOrRegister("countApp__" + name, func() metrics.Counter {
+		//s.reg.Register("meterApp__"+name, metrics.NewMeter())
 		return metrics.NewCounter()
 	})
 
 	c.(metrics.Counter).Inc(1)
+
+	log.Println("Stats --- app hit: ", name)
 
 }
 
 func (s *StatsContainer) IncrementService(id string) {
 
-	c := s.reg.GetOrRegister("countService__"+id, func() metrics.Counter {
-		s.reg.Register("meterService__"+id, metrics.NewMeter())
+	c := s.reg.GetOrRegister("countService__" + id, func() metrics.Counter {
+		//s.reg.Register("meterService__"+id, metrics.NewMeter())
 		return metrics.NewCounter()
 	})
 
 	c.(metrics.Counter).Inc(1)
+
+	log.Println("Stats --- service hit: ", id)
+
 }
 
 func (s *StatsContainer) IncrementEndpoint(name string) {
 
-	c := s.reg.GetOrRegister("countEndpoint__"+name, func() metrics.Counter {
+	c := s.reg.GetOrRegister("countEndpoint__" + name, func() metrics.Counter {
 		return metrics.NewCounter()
 	})
 
 	c.(metrics.Counter).Inc(1)
+
+	log.Println("Stats --- endpoint hit: ", name)
+
 }
 
 func (s *StatsContainer) Start() {
@@ -119,23 +128,60 @@ func (s *StatsContainer) Start() {
 
 					switch p[0] {
 					case "countApp":
-						meter := s.reg.Get("meterApp__" + p[1]).(metrics.Meter)
+						meter := s.reg.GetOrRegister("meterApp__" + p[1], func() metrics.Meter {
+							return metrics.NewMeter()
+						}).(metrics.Meter)
 						meter.Mark(count)
 						s.Lock()
+
+						st := s.appStats[p[1]]
+
+						if st == nil {
+							st = &ApplicationStats{
+								Name:p[1],
+							}
+							s.appStats[p[1]] = st
+						}
+
 						s.appStats[p[1]].Rps = meter.Rate1()
 						totalMeter = totalMeter + s.appStats[p[1]].Rps
 						s.Unlock()
 					case "countService":
-						meter := s.reg.Get("meterService__" + p[1]).(metrics.Meter)
+						meter := s.reg.GetOrRegister("meterService__" + p[1], func() metrics.Meter {
+							return metrics.NewMeter()
+						}).(metrics.Meter)
 						meter.Mark(count)
 						s.Lock()
+
+						st := s.svcStats[p[1]]
+
+						if st == nil {
+							st = &ServiceStats{
+								Id:p[1],
+							}
+							s.svcStats[p[1]] = st
+						}
+
 						s.svcStats[p[1]].Rps = meter.Rate1()
 						s.Unlock()
 					case "countEndpoint":
-						meter := s.reg.Get("meterEndpoint__" + p[1]).(metrics.Meter)
+						meter := s.reg.GetOrRegister("meterEndpoint__" + p[1], func() metrics.Meter {
+							return metrics.NewMeter()
+						}).(metrics.Meter)
 						meter.Mark(count)
 						s.Lock()
+
+						st := s.endpStats[p[1]]
+
+						if st == nil {
+							st = &EndpointStats{
+								Id:p[1],
+							}
+							s.endpStats[p[1]] = st
+						}
+
 						s.endpStats[p[1]].Rps = meter.Rate1()
+
 						s.Unlock()
 					default:
 						log.Println("Unknown stats entry:", key)

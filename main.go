@@ -83,7 +83,7 @@ func main() {
 
 	initStats()
 
-	go serveAdminBackend()
+	go serveAdminBackend("")
 
 	err = serveProxy(registry)
 

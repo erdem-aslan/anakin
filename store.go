@@ -133,6 +133,7 @@ func (ms *MongoStore) CreateApplication(a *Application) error {
 		ms.ll.RUnlock()
 
 		broadcastEvent(AppCreated, a.Id())
+		registry.ApplicationAdded(a)
 
 	}
 
@@ -160,6 +161,7 @@ func (ms *MongoStore) UpdateApplication(a *Application) error {
 		ms.ll.RUnlock()
 
 		broadcastEvent(AppUpdated, a.Id())
+		registry.ApplicationUpdated(a)
 	}
 
 	return err
@@ -191,6 +193,7 @@ func (ms *MongoStore) DeleteApplication(id string) error {
 		ms.ll.RUnlock()
 
 		broadcastEvent(AppDeleted, id)
+
 	}
 
 	return err

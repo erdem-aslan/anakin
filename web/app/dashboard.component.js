@@ -1,4 +1,4 @@
-System.register(['angular2/core', 'rxjs/Rx', "./anakin.service", "./application.component", "./mapToIterable", "./slashIfMissing", "./dateFormatter", "./searchFilterByName", "./searchFilterById"], function(exports_1, context_1) {
+System.register(['angular2/core', 'angular2/common', 'rxjs/Rx', "./anakin.service", "./application.component", "./mapToIterable", "./slashIfMissing", "./dateFormatter", "./searchFilterByName", "./searchFilterById"], function(exports_1, context_1) {
     "use strict";
     var __moduleName = context_1 && context_1.id;
     var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
@@ -10,12 +10,15 @@ System.register(['angular2/core', 'rxjs/Rx', "./anakin.service", "./application.
     var __metadata = (this && this.__metadata) || function (k, v) {
         if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
     };
-    var core_1, Rx_1, anakin_service_1, application_component_1, mapToIterable_1, slashIfMissing_1, dateFormatter_1, searchFilterByName_1, searchFilterById_1;
+    var core_1, common_1, Rx_1, anakin_service_1, application_component_1, mapToIterable_1, slashIfMissing_1, dateFormatter_1, searchFilterByName_1, searchFilterById_1;
     var DashboardComponent;
     return {
         setters:[
             function (core_1_1) {
                 core_1 = core_1_1;
+            },
+            function (common_1_1) {
+                common_1 = common_1_1;
             },
             function (Rx_1_1) {
                 Rx_1 = Rx_1_1;
@@ -99,7 +102,7 @@ System.register(['angular2/core', 'rxjs/Rx', "./anakin.service", "./application.
                             slashIfMissing_1.SlashIfMissing,
                             dateFormatter_1.DateFormatter,
                             searchFilterByName_1.SearchFilterByName,
-                            searchFilterById_1.SearchFilterById]
+                            searchFilterById_1.SearchFilterById, common_1.DecimalPipe]
                     }), 
                     __metadata('design:paramtypes', [core_1.ElementRef, anakin_service_1.AnakinService])
                 ], DashboardComponent);
