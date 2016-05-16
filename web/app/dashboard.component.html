@@ -67,11 +67,21 @@
                             <p></p>
 
                             <h4 style="color: #bdced7">Administration</h4>
-                            <span>Address: {{instance.adminIp}} Port: {{instance.adminPort}}</span>
+                            <span style="color: #bdced7">Address: </span>
+                            <span *ngIf="instance.adminIp != ''">{{instance.adminIp}}</span>
+                            <span *ngIf="instance.adminIp == ''">*</span>
+
+                            <span style="color: #bdced7">:</span>
+                            <span>{{instance.adminPort}}</span>
                             <p></p>
 
                             <h4 style="color: #bdced7">Routing</h4>
-                            <span>Address: {{instance.proxyIp}} Port: {{instance.proxyPort}}</span>
+                            <span style="color: #bdced7">Address: </span>
+                            <span *ngIf="instance.proxyIp != ''">{{instance.proxyIp}}</span>
+                            <span *ngIf="instance.proxyIp == ''">*</span>
+
+                            <span style="color: #bdced7">:</span>
+                            <span>{{instance.proxyPort}}</span>
                             <p></p>
 
                             <h4 style="color: #bdced7">Started</h4>
