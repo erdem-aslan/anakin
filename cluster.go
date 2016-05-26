@@ -75,7 +75,10 @@ func (ac *AnakinCluster) Start(randomNodeName bool) error {
 	sc.Tags["proxyIp"] = proxyIp
 	sc.Tags["proxyPort"] = strconv.Itoa(config.ProxyPort)
 
+	sc.MemberlistConfig.AdvertiseAddr = config.ClusterIp
 	sc.MemberlistConfig.AdvertisePort = config.ClusterPort
+
+	sc.MemberlistConfig.BindAddr = config.ClusterIp
 	sc.MemberlistConfig.BindPort = config.ClusterPort
 
 	go ac.handleClusterEvents()
