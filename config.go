@@ -7,6 +7,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/satori/go.uuid"
 	"os"
+	"strings"
 )
 
 const SEPARATOR string = string(os.PathSeparator)
@@ -36,14 +37,30 @@ func initConfig() {
 
 		console := bufio.NewReader(os.Stdin)
 
-		log.Print("Continue with default values? (Y/n) : ")
+		var response string = ""
 
-		response, err := console.ReadString('\n')
+		log.Print("Continue with default values? (N/y) : ")
 
-		if response == "n" || response == "N" {
+		for {
+
+			response, err = console.ReadString('\n')
+			response = strings.TrimSuffix(response, "\n")
+
+			if response != "" &&
+				response != "N" && response != "n" && response != "Y" && response != "y" {
+				log.Println("Only Y/y/N/n or empty for default value(s) are valid.")
+				continue
+			}
+
+			break
+
+		}
+
+		if response == "" || response == "n" || response == "N" {
 			log.Println("Exiting...")
 			os.Exit(0)
 		}
+
 
 		log.Println("Generating anakin.toml with necessary directory structure...")
 
@@ -91,6 +108,7 @@ func initConfig() {
 			ProxyIp:       DefaultProxyIp,
 			ProxyPort:     DefaultProxyPort,
 			ProxyRootPath: DefaultProxyRootPath,
+			LogDir:        DefaultLogDir,
 		}
 
 		toml.NewEncoder(tomlFile).Encode(config)
@@ -146,6 +164,7 @@ type Configuration struct {
 
 	DbPath     string
 	DbFileName string
+	LogDir     string
 	CertFile   string
 	PemFile    string
 }

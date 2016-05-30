@@ -146,7 +146,6 @@ func (r *Registry) ExtractBaseUrl(target *url.URL) (baseUrl string, err error) {
 
 func (r *Registry) ServiceForRequest(request *http.Request) *Service {
 
-
 	target := request.URL
 	baseUrl, err := r.ExtractBaseUrl(target)
 
@@ -202,7 +201,7 @@ func (r *Registry) ServiceForRequest(request *http.Request) *Service {
 		log.Println("Matched app: ", matchedApp, ", matched service: ", matchedService)
 	}
 
-	log.Println("Matched Service: ",matchedService)
+	log.Println("Matched Service: ", matchedService)
 
 	return matchedService
 }
@@ -373,6 +372,7 @@ func (r *Registry) EndpointRemoved(id string) {
 
 func (r *Registry) RemoteRegistryEvent(message ClusterEvent) {
 
+	log.Println("Received remote registry event:", message.EventType, message.Payload, message.Sender)
 	payload := message.Payload
 
 	switch message.EventType {

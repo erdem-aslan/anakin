@@ -42,3 +42,9 @@ _testmain.go
 *.exe
 *.test
 *.prof
+*.log
+
+dist
+db
+cfg
+

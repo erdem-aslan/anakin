@@ -97,7 +97,7 @@ func (a *Application) RemoveServiceId(id string) {
 
 func (a *Application) sortServices() {
 
-	a.servicesSorted = make([]*Service, 0,len(a.Services))
+	a.servicesSorted = make([]*Service, 0, len(a.Services))
 
 	for k, _ := range a.Services {
 		service := registry.GetService(k)
