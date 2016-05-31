@@ -61,7 +61,6 @@ func initConfig() {
 			os.Exit(0)
 		}
 
-
 		log.Println("Generating anakin.toml with necessary directory structure...")
 
 		cfgPath := currentPath + SEPARATOR + DefaultCfgPath

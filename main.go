@@ -46,7 +46,7 @@ var (
 	registry      *Registry
 	log           *logger.Logger
 	filter        *logutils.LevelFilter
-	fileLogger    *RotatingFileWriter
+	fileLogger    *RotatingWriter
 	stats         *StatsContainer
 )
 
@@ -229,9 +229,9 @@ func NewRotatingFileWriter(filePath string,
 	filePrefix string,
 	backupDir string,
 	maxSizeInBytes int64,
-	maxBackup int) *RotatingFileWriter {
+	maxBackup int) *RotatingWriter {
 
-	return &RotatingFileWriter{
+	return &RotatingWriter{
 		maxBackup:  maxBackup,
 		interval:   time.Millisecond * 100,
 		filePath:   filePath,
@@ -243,7 +243,7 @@ func NewRotatingFileWriter(filePath string,
 	}
 }
 
-type RotatingFileWriter struct {
+type RotatingWriter struct {
 	interval   time.Duration
 	maxSize    int64
 	maxBackup  int
@@ -263,12 +263,12 @@ type RotatingFileWriter struct {
 }
 
 // io.Writer interface implementation
-func (rlw *RotatingFileWriter) Write(b []byte) (n int, err error) {
+func (rlw *RotatingWriter) Write(b []byte) (n int, err error) {
 	rlw.logCh <- string(b)
 	return len(b), err
 }
 
-func (rlw *RotatingFileWriter) Init() error {
+func (rlw *RotatingWriter) Init() error {
 
 	rlw.initL.RLock()
 	if rlw.isInit {
@@ -350,11 +350,11 @@ func (rlw *RotatingFileWriter) Init() error {
 	return nil
 }
 
-func (rlw *RotatingFileWriter) Shutdown() {
+func (rlw *RotatingWriter) Shutdown() {
 	rlw.shCh <- struct{}{}
 }
 
-func (rlw *RotatingFileWriter) rotateIfNecessary() error {
+func (rlw *RotatingWriter) rotateIfNecessary() error {
 	rlw.fileL.RLock()
 
 	info, err := rlw.file.Stat()
@@ -420,7 +420,7 @@ func (rlw *RotatingFileWriter) rotateIfNecessary() error {
 
 }
 
-func (rlw *RotatingFileWriter) persistBuffer() {
+func (rlw *RotatingWriter) persistBuffer() {
 
 persistLoop:
 	for {
