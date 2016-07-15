@@ -83,7 +83,7 @@ func (r *Registry) Init(store Store) error {
 		// build the slice of endpoints for source hashing
 		sl := make([]*Endpoint, len(set))
 
-		for eId, _ := range set {
+		for eId := range set {
 			e := r.endpoints[eId]
 			ri.Value = e
 			ri = ri.Next()
@@ -206,7 +206,7 @@ func (r *Registry) ServiceForRequest(request *http.Request) *Service {
 	return matchedService
 }
 
-func (r *Registry) Endpoint(s *Service, req *http.Request) *Endpoint {
+func (r *Registry) NextAvailableEndpoint(s *Service, senderIp string) *Endpoint {
 
 	var e *Endpoint = nil
 
@@ -249,7 +249,7 @@ func (r *Registry) Endpoint(s *Service, req *http.Request) *Endpoint {
 			return nil
 		}
 
-		idx := hash(strings.Split(req.RemoteAddr, ":")[0]) % lil
+		idx := hash(senderIp) % lil
 
 		e = s.serviceEPList[idx]
 		state := e.State()

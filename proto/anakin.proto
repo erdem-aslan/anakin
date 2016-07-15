@@ -1,0 +1,41 @@
+syntax = "proto3";
+package remote;
+
+import "google/protobuf/timestamp.proto";
+
+enum State {
+    Active = 0;
+    Passive = 1;
+    Suspended = 2;
+    Failing = 3;
+    Trying = 4;
+
+}
+
+message InstanceStats {
+    string os = 1;
+    int32 cpuCores = 2;
+    string mem = 3;
+    double rps = 4;
+
+}
+
+message Instance {
+    string id = 1;
+    string version = 2;
+    string adminPort = 3;
+    string adminIp = 4;
+    string proxyIp = 5;
+    string proxyPort = 6;
+    google.protobuf.Timestamp started = 7;
+    State state  = 8;
+    InstanceStats stats = 9;
+}
+
+message RpcRequest {
+    google.protobuf.Timestamp time = 1;
+}
+
+service Anakin {
+    rpc GetInstance(RpcRequest) returns (Instance);
+}

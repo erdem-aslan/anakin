@@ -3,12 +3,17 @@ package main
 import (
 	"bytes"
 	"encoding/gob"
+	"github.com/gladmir/anakin/remote"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/serf/serf"
 	"github.com/satori/go.uuid"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 	"net"
 	"os"
 	"strconv"
 	"time"
+	"sync"
 )
 
 func initCluster() error {
@@ -19,12 +24,15 @@ func initCluster() error {
 func newAnakinCluster() *AnakinCluster {
 	return &AnakinCluster{
 		ec: make(chan serf.Event),
+		rc: make(map[string]remote.AnakinClient),
 	}
 }
 
 type AnakinCluster struct {
 	sf       *serf.Serf
 	ec       chan serf.Event
+	rc map[string]remote.AnakinClient
+	rcl sync.RWMutex
 	Name     string
 	nameHash int
 	started  time.Time
@@ -58,22 +66,21 @@ func (ac *AnakinCluster) Start(randomNodeName bool) error {
 		sc.Tags = make(map[string]string)
 	}
 
-	adminIp := config.AdminIp
+	var grpcIp string
 
-	if adminIp == "" {
-		adminIp = GetLocalIP()
+	if config.ClusterIp == "" {
+		grpcIp = GetLocalIP()
+	} else {
+		grpcIp = config.ClusterIp
 	}
 
-	proxyIp := config.ProxyIp
+	addr, err := ac.startGrpcService(grpcIp)
 
-	if proxyIp == "" {
-		proxyIp = GetLocalIP()
+	if err != nil {
+		return err
 	}
 
-	sc.Tags["adminIp"] = adminIp
-	sc.Tags["adminPort"] = strconv.Itoa(config.AdminPort)
-	sc.Tags["proxyIp"] = proxyIp
-	sc.Tags["proxyPort"] = strconv.Itoa(config.ProxyPort)
+	sc.Tags["grpcAddress"] = addr.String()
 
 	sc.MemberlistConfig.AdvertiseAddr = config.ClusterIp
 	sc.MemberlistConfig.AdvertisePort = config.ClusterPort
@@ -82,6 +89,7 @@ func (ac *AnakinCluster) Start(randomNodeName bool) error {
 	sc.MemberlistConfig.BindPort = config.ClusterPort
 
 	go ac.handleClusterEvents()
+
 
 	s, err := serf.Create(sc)
 
@@ -108,29 +116,129 @@ func (ac *AnakinCluster) Start(randomNodeName bool) error {
 	return nil
 }
 
-func (ac *AnakinCluster) Instances() (others []*Instance, local *Instance) {
+func (ac *AnakinCluster) startGrpcService(grpcIp string) (net.Addr, error) {
+
+	lis, err := net.Listen("tcp", grpcIp+":"+strconv.Itoa(config.ClusterServicesPort))
+
+	if err != nil {
+		return nil, err
+	}
+
+	s := grpc.NewServer()
+	remote.RegisterAnakinServer(s, ac)
+
+	go s.Serve(lis)
+
+	log.Println("Started Anakin Grpc Service on ", lis.Addr())
+
+	return lis.Addr(), nil
+}
+
+func (ac *AnakinCluster) GetInstance(ctx context.Context, r *remote.RpcRequest) (*remote.Instance, error) {
+	return ac.fetchRemoteInstance()
+}
+
+func (ac *AnakinCluster) fetchRemoteInstance() (*remote.Instance, error) {
+	li := ac.LocalInstance()
+
+	var state remote.State
+
+	switch li.State {
+	case Active:
+		state = remote.State_Active
+	case Passive:
+		state = remote.State_Passive
+	case Failing:
+		state = remote.State_Failing
+	case Suspended:
+		state = remote.State_Suspended
+	case Trying:
+		state = remote.State_Trying
+	}
+
+	log.Println("State: ", state)
+
+	ss, err := ptypes.TimestampProto(li.Started)
+
+	if err != nil {
+		return nil, err
+	}
+
+	i := &remote.Instance{
+		Id : li.Id,
+		Version : li.Version,
+		AdminPort: li.AdminPort,
+		AdminIp: li.AdminIp,
+		ProxyIp: li.ProxyIp,
+		ProxyPort:li.ProxyPort,
+		Started:ss,
+		State:state,
+		Stats: &remote.InstanceStats{
+			li.Stats.Os,
+			int32(li.Stats.CpuCores),
+			li.Stats.Mem,
+			li.Stats.Rps,
+		},
+	}
+
+	return i, nil;
+
+}
+
+func (ac *AnakinCluster) Instances() []*remote.Instance {
 
 	members := ac.sf.Members()
 
-	others = make([]*Instance, 0, len(members))
+	instances := make([]*remote.Instance, 0, len(members))
 
 	for _, member := range members {
 
 		if member.Name == ac.Name {
-			local = ac.LocalInstance()
+			local, err := ac.fetchRemoteInstance()
+
+			if err != nil {
+				log.Println(err)
+			}
+
+			instances = append(instances, local)
 			continue
 		}
 
-		others = append(others, &Instance{
-			Id:        member.Name,
-			AdminPort: member.Tags["adminPort"],
-			AdminIp:   member.Tags["adminIp"],
-			ProxyIp:   member.Tags["proxyIp"],
-			ProxyPort: member.Tags["proxyPort"],
+		ac.rcl.Lock()
+
+		c := ac.rc[member.Name]
+
+		if c == nil {
+			conn, err := grpc.Dial(member.Tags["grpcAddress"], grpc.WithInsecure())
+
+			if err != nil {
+				log.Println(err)
+			}
+
+			c = remote.NewAnakinClient(conn)
+		}
+
+		ac.rc[member.Name] = c
+		ac.rcl.Unlock()
+
+		now, err := ptypes.TimestampProto(time.Now())
+
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		i, err := c.GetInstance(context.Background(), &remote.RpcRequest{
+			now,
 		})
+
+		if err != nil {
+			log.Println(err)
+		}
+		instances = append(instances, i)
 	}
 
-	return
+	return instances
 }
 
 func (ac *AnakinCluster) LocalInstance() *Instance {
@@ -319,7 +427,6 @@ func GetLocalIP() string {
 		return ""
 	}
 	for _, address := range addrs {
-		// check the address type and if it is not a loopback the display it
 		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 			if ipnet.IP.To4() != nil {
 				return ipnet.IP.String()

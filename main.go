@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	"github.com/gladmir/anakin/remote"
 )
 
 type State string
@@ -32,6 +33,7 @@ const (
 
 	DefaultAdminIp   string = ""
 	DefaultAdminPort int    = 16016
+	DefaultGRPCPort  int    = DefaultAdminPort + 1
 
 	DefaultProxyIp       string = ""
 	DefaultProxyPort     int    = 16015
@@ -58,7 +60,7 @@ func init() {
 		Writer:   os.Stderr,
 	}
 
-	log = logger.New(os.Stdout, "<anakin>", logger.Ldate|logger.Ltime|logger.Lshortfile)
+	log = logger.New(os.Stdout, "<anakin>\t", logger.Ldate|logger.Ltime|logger.Lshortfile)
 
 }
 
@@ -69,11 +71,12 @@ func main() {
 	// Config init does not return error, just exits the runtime.
 	initConfig()
 
-	fileLogger = NewRotatingFileWriter(config.LogDir, "anakin", config.LogDir+"/backups", 1024*1024*1024*10, 10)
+	fileLogger = NewRotatingFileWriter(config.LogDir, "anakin", "backups", 1024*1024*1024*10, 10)
 	err := fileLogger.Init()
 
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		fileLogger.Shutdown()
 	}
 
 	log.SetOutput(fileLogger)
@@ -81,20 +84,23 @@ func main() {
 	err = initStore()
 
 	if err != nil {
-		log.Fatal("Store access has failed with error: ", err)
+		log.Println("Store access has failed with error: ", err)
+		fileLogger.Shutdown()
+
 	}
 
-	// init clustering
 	err = initCluster()
 
 	if err != nil {
-		log.Fatal("Clustering has failed: ", err)
+		log.Println("Clustering has failed: ", err)
+		fileLogger.Shutdown()
 	}
 
 	registry, err = initRegistry()
 
 	if err != nil {
-		log.Fatal("Registry initialization has failed with error: ", err)
+		log.Println("Registry initialization has failed with error: ", err)
+		fileLogger.Shutdown()
 	}
 
 	store.AddListener(registry)
@@ -106,7 +112,8 @@ func main() {
 	err = serveProxy(registry)
 
 	if err != nil {
-		log.Fatal("Failed serving reverse proxy, error: ", err)
+		log.Println("Failed serving reverse proxy, error: ", err)
+		fileLogger.Shutdown()
 	}
 }
 
@@ -177,7 +184,7 @@ func (a SortByDESCServiceUrlLength) Swap(i, j int) {
 	a[i], a[j] = a[j], a[i]
 }
 
-type SortInstanceById []*Instance
+type SortInstanceById []*remote.Instance
 
 func (a SortInstanceById) Len() int {
 	return len(a)
@@ -232,9 +239,10 @@ func NewRotatingFileWriter(filePath string,
 	maxBackup int) *RotatingWriter {
 
 	return &RotatingWriter{
+		iLog:       logger.New(os.Stdout, "<RotatingWriter>\t", logger.Ldate|logger.Ltime|logger.Lshortfile),
 		maxBackup:  maxBackup,
 		interval:   time.Millisecond * 100,
-		filePath:   filePath,
+		dirPath:    filePath,
 		filePrefix: filePrefix,
 		backupDir:  backupDir,
 		maxSize:    maxSizeInBytes,
@@ -244,11 +252,12 @@ func NewRotatingFileWriter(filePath string,
 }
 
 type RotatingWriter struct {
+	iLog       *logger.Logger
 	interval   time.Duration
 	maxSize    int64
 	maxBackup  int
 	filePrefix string
-	filePath   string
+	dirPath    string
 	file       *os.File
 
 	backupDir string
@@ -273,7 +282,7 @@ func (rlw *RotatingWriter) Init() error {
 	rlw.initL.RLock()
 	if rlw.isInit {
 		rlw.initL.RUnlock()
-		log.Println("RotatingLogWriter is already in init state, ignoring init request.")
+		rlw.iLog.Println("RotatingLogWriter is already in init state, ignoring init request.")
 		return nil
 	}
 	rlw.initL.RUnlock()
@@ -284,24 +293,29 @@ func (rlw *RotatingWriter) Init() error {
 
 	var err error
 
-	if !filepath.IsAbs(rlw.filePath) {
+	if !filepath.IsAbs(rlw.dirPath) {
 
-		rlw.filePath, err = filepath.Abs(rlw.filePath)
+		rlw.iLog.Println("DirPath is not absoulute: ", rlw.dirPath)
+
+		rlw.dirPath, err = filepath.Abs(rlw.dirPath)
 
 		if err != nil {
 			return err
 		}
+
+		rlw.iLog.Println("DirPath resolved to: ", rlw.dirPath)
+
 	}
 
-	log.Println("Creating directory", rlw.filePath, " if missing...")
+	rlw.iLog.Println("Creating directory", rlw.dirPath, " if missing...")
 
-	err = os.MkdirAll(rlw.filePath, 0755)
+	err = os.MkdirAll(rlw.dirPath, 0755)
 
 	if err != nil {
 		return err
 	}
 
-	f, err := os.OpenFile(rlw.filePath+string(os.PathSeparator)+rlw.filePrefix+".log", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0755)
+	f, err := os.OpenFile(rlw.dirPath+string(os.PathSeparator)+rlw.filePrefix+".log", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0755)
 
 	if err != nil {
 		return err
@@ -312,7 +326,10 @@ func (rlw *RotatingWriter) Init() error {
 	// create backupDirectory if missing
 
 	if !filepath.IsAbs(rlw.backupDir) {
-		rlw.backupDir = rlw.filePath + string(os.PathSeparator) + rlw.backupDir
+		rlw.iLog.Println("BackupDirPath is not absoulute: ", rlw.backupDir)
+		rlw.backupDir = rlw.dirPath + string(os.PathSeparator) + rlw.backupDir
+		rlw.iLog.Println("BackupDirPath resolved as: ", rlw.backupDir)
+
 	}
 
 	err = os.MkdirAll(rlw.backupDir, 0755)

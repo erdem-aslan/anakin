@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -26,28 +27,55 @@ func NewMultipleHostReverseProxy(reg *Registry) *httputil.ReverseProxy {
 
 	transport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
-		Dial: func(network, endpointId string) (net.Conn, error) {
+		Dial: func(network, piggyBack string) (net.Conn, error) {
 
-			if endpointId == "" {
-				return nil, errors.New("Failed to match any endpoint")
+			if piggyBack == "" {
+				return nil, errors.New("Failed to match any service")
 			}
 
 			// get rid of :80 appended by stack
-			endpointId = strings.Split(endpointId, ":")[0]
+			piggyBack = strings.Split(piggyBack, ":")[0]
 
-			log.Println("Calling endpoint ...")
-			endpoint := reg.GetEndpoint(endpointId)
-			log.Println("Calling endpoint: ", endpoint)
+			ss := strings.Split(piggyBack, "|")
 
-			stats.IncrementEndpoint(endpointId)
+			serviceId := ss[0]
+			senderIp := ss[1]
 
-			conn, err := net.Dial(network, endpoint.Address())
+			service := reg.GetService(serviceId)
 
-			//@todo: Fetch a new endpoint instead of giving up
-			if err != nil {
-				endpoint.SetState(Failing)
-				store.UpdateEndpoint(endpoint)
-				return nil, errors.New("Endpoint failing, address: " + endpoint.Address())
+			if service == nil {
+				return nil, errors.New(fmt.Sprintf("Service is missing and/or deleted in the middle of routing, id: %s", serviceId))
+			}
+			endpoint := reg.NextAvailableEndpoint(service, senderIp)
+
+			if endpoint == nil {
+				return nil, errors.New(fmt.Sprintf("No endpoint is available/present for %s", service))
+			}
+
+			var conn net.Conn
+			var err error
+
+			for {
+				conn, err = net.Dial(network, endpoint.Address())
+
+				stats.IncrementEndpoint(endpoint.UniqueId)
+
+				if err != nil {
+					endpoint.SetState(Failing)
+					store.UpdateEndpoint(endpoint)
+					log.Println("Endpoint failing, address:", endpoint.Address())
+
+					endpoint = reg.NextAvailableEndpoint(service, senderIp)
+
+					if endpoint == nil {
+						log.Println("All endpoints are failing for service:", service)
+						return nil, errors.New("Endpoint failing, address: " + endpoint.Address())
+					}
+
+				}
+
+				break
+
 			}
 
 			if endpoint.State() == Trying {
@@ -69,15 +97,9 @@ func NewMultipleHostReverseProxy(reg *Registry) *httputil.ReverseProxy {
 			return
 		}
 
-		endpoint := reg.Endpoint(service, req)
+		senderIp := strings.Split(req.RemoteAddr, ":")[0]
 
-		if endpoint == nil {
-			log.Printf("No endpoint is available/present for %s\n", req.URL.Path)
-			return
-		}
-
-		req.URL.Scheme = endpoint.Scheme
-		req.URL.Host = endpoint.UniqueId
+		req.URL.Host = service.UniqueId + "|" + senderIp
 	}
 
 	return &httputil.ReverseProxy{

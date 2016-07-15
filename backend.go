@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"github.com/golang/protobuf/jsonpb"
+	"bytes"
 )
 
 func serveAdminBackend(path string) {
@@ -52,13 +54,7 @@ func serveAdminBackend(path string) {
 
 	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./web/")))
 
-	var address string = ""
-
-	if config.AdminIp != DefaultAdminIp {
-		address = DefaultAdminIp
-	}
-
-	address = address + ":" + strconv.Itoa(config.AdminPort)
+	address := config.AdminIp + ":" + strconv.Itoa(config.AdminPort)
 
 	log.Println("Serving administration backend on ", address)
 
@@ -71,49 +67,36 @@ func handlePing(w http.ResponseWriter, r *http.Request) {
 
 func handleCluster(w http.ResponseWriter, r *http.Request) {
 
-	others, local := anakinCluster.Instances()
-
-	instances := make([]*Instance, 0)
-	instances = append(instances, local)
-
-	if others != nil || len(others) != 0 {
-
-		for _, instance := range others {
-
-			req, _ := http.NewRequest("GET", "http://"+instance.AdminIp+
-				":"+instance.AdminPort+"/anakin/v1/local", nil)
-
-			req.Header.Set("Accept", "application/json")
-
-			resp, err := http.DefaultClient.Do(req)
-
-			if err != nil {
-				log.Println("Instance cannot be reached: ", instance, err)
-				instance.State = Failing
-				continue
-			}
-
-			var remote *Instance = new(Instance)
-
-			decoder := json.NewDecoder(resp.Body)
-			err = decoder.Decode(remote)
-
-			if err != nil {
-				internalError(w, err)
-				return
-			}
-
-			instances = append(instances, remote)
-
-		}
-	}
+	instances := anakinCluster.Instances()
 
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
 	sort.Sort(SortInstanceById(instances))
 
-	err := json.NewEncoder(w).Encode(instances)
+	marshaller := &jsonpb.Marshaler{
+		EmitDefaults:true,
+		EnumsAsInts:false,
+		OrigName:false,
+	}
+	var buffer bytes.Buffer
+
+	buffer.WriteString("[")
+
+	for _, ins := range instances {
+		s, err := marshaller.MarshalToString(ins)
+
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		buffer.WriteString(s)
+	}
+
+	buffer.WriteString("]")
+
+	_, err := w.Write(buffer.Bytes())
 
 	if err != nil {
 		internalError(w, err)
@@ -126,7 +109,23 @@ func handleLocal(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	err := json.NewEncoder(w).Encode(anakinCluster.LocalInstance())
+	i, err := anakinCluster.fetchRemoteInstance()
+
+	if err != nil {
+		internalError(w, err)
+		return
+	}
+
+	log.Println(i)
+
+	marshaller := &jsonpb.Marshaler{
+		EmitDefaults:true,
+		EnumsAsInts:false,
+		OrigName:false,
+	}
+
+	err = marshaller.Marshal(w, i)
+
 
 	if err != nil {
 		internalError(w, err)

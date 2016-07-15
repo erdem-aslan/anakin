@@ -48,7 +48,8 @@ func initConfig() {
 
 			if response != "" &&
 				response != "N" && response != "n" && response != "Y" && response != "y" {
-				log.Println("Only Y/y/N/n or empty for default value(s) are valid.")
+				log.Println("Only Y/y/N/n or empty for default value(s) are valid.\n\n")
+				log.Print("Continue with default values? (N/y) : ")
 				continue
 			}
 
@@ -99,15 +100,16 @@ func initConfig() {
 		defer tomlFile.Close()
 
 		config = &Configuration{
-			AdminIp:       DefaultAdminIp,
-			AdminPort:     DefaultAdminPort,
-			AdminToken:    uuid.NewV4().String(),
-			DbPath:        dbPath,
-			DbFileName:    DefaultDbFileName,
-			ProxyIp:       DefaultProxyIp,
-			ProxyPort:     DefaultProxyPort,
-			ProxyRootPath: DefaultProxyRootPath,
-			LogDir:        DefaultLogDir,
+			AdminIp:             DefaultAdminIp,
+			AdminPort:           DefaultAdminPort,
+			AdminToken:          uuid.NewV4().String(),
+			ClusterServicesPort: DefaultGRPCPort,
+			DbPath:              dbPath,
+			DbFileName:          DefaultDbFileName,
+			ProxyIp:             DefaultProxyIp,
+			ProxyPort:           DefaultProxyPort,
+			ProxyRootPath:       DefaultProxyRootPath,
+			LogDir:              DefaultLogDir,
 		}
 
 		toml.NewEncoder(tomlFile).Encode(config)
@@ -147,25 +149,22 @@ func validateConfig(c *Configuration) error {
 }
 
 type Configuration struct {
-	AdminIp    string
-	AdminPort  int
-	AdminToken string
-
-	ProxyIp       string
-	ProxyPort     int
-	ProxyRootPath string
-
-	ClusterIp      string
-	ClusterPort    int
-	ClusterMembers []string
-
-	MongoServers []string
-
-	DbPath     string
-	DbFileName string
-	LogDir     string
-	CertFile   string
-	PemFile    string
+	AdminIp             string
+	AdminPort           int
+	AdminToken          string
+	ProxyIp             string
+	ProxyPort           int
+	ProxyRootPath       string
+	ClusterIp           string
+	ClusterPort         int
+	ClusterServicesPort int
+	ClusterMembers      []string
+	MongoServers        []string
+	DbPath              string
+	DbFileName          string
+	LogDir              string
+	CertFile            string
+	PemFile             string
 }
 
 func (c *Configuration) IsMandatoryFieldsValid() error {
