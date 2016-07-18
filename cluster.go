@@ -9,11 +9,11 @@ import (
 	"github.com/satori/go.uuid"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"net"
+	"sync"
+	"time"
 	"os"
 	"strconv"
-	"time"
-	"sync"
+	"net"
 )
 
 func initCluster() error {
@@ -31,8 +31,8 @@ func newAnakinCluster() *AnakinCluster {
 type AnakinCluster struct {
 	sf       *serf.Serf
 	ec       chan serf.Event
-	rc map[string]remote.AnakinClient
-	rcl sync.RWMutex
+	rc       map[string]remote.AnakinClient
+	rcl      sync.RWMutex
 	Name     string
 	nameHash int
 	started  time.Time
@@ -165,14 +165,14 @@ func (ac *AnakinCluster) fetchRemoteInstance() (*remote.Instance, error) {
 	}
 
 	i := &remote.Instance{
-		Id : li.Id,
-		Version : li.Version,
+		Id:        li.Id,
+		Version:   li.Version,
 		AdminPort: li.AdminPort,
-		AdminIp: li.AdminIp,
-		ProxyIp: li.ProxyIp,
-		ProxyPort:li.ProxyPort,
-		Started:ss,
-		State:state,
+		AdminIp:   li.AdminIp,
+		ProxyIp:   li.ProxyIp,
+		ProxyPort: li.ProxyPort,
+		Started:   ss,
+		State:     state,
 		Stats: &remote.InstanceStats{
 			li.Stats.Os,
 			int32(li.Stats.CpuCores),
@@ -181,10 +181,11 @@ func (ac *AnakinCluster) fetchRemoteInstance() (*remote.Instance, error) {
 		},
 	}
 
-	return i, nil;
+	return i, nil
 
 }
 
+//Instances returns the current anakin instances of the cluster.
 func (ac *AnakinCluster) Instances() []*remote.Instance {
 
 	members := ac.sf.Members()
@@ -244,15 +245,15 @@ func (ac *AnakinCluster) Instances() []*remote.Instance {
 func (ac *AnakinCluster) LocalInstance() *Instance {
 
 	return &Instance{
-		ac.Name,
-		Version,
-		strconv.Itoa(config.AdminPort),
-		config.AdminIp,
-		config.ProxyIp,
-		strconv.Itoa(config.ProxyPort),
-		ac.started,
-		Active,
-		stats.InstanceStats(),
+		Id: ac.Name,
+		Version: Version,
+		AdminPort: strconv.Itoa(config.AdminPort),
+		AdminIp: config.AdminIp,
+		ProxyIp: config.ProxyIp,
+		ProxyPort: strconv.Itoa(config.ProxyPort),
+		Started: ac.started,
+		State: Active,
+		Stats: stats.InstanceStats(),
 	}
 
 }
