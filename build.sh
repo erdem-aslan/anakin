@@ -1,6 +1,4 @@
 #!/bin/bash
-export GOPATH=/Users/erdemaslan/Projects/go
-export GOSRC=$GOPATH/src
 export GOOS=linux
 export GOARCH=amd64
 
